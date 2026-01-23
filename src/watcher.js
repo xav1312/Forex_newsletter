@@ -5,6 +5,8 @@ const { scrapeArticle } = require('./scraper');
 const { summarizeWithGemini, simpleSummary } = require('./summarizer');
 const { sendNewsletter, previewNewsletter } = require('./emailer');
 
+const { getEventsForCurrencies } = require('./economics');
+
 // State file to track last processed article
 const STATE_FILE = path.join(__dirname, '..', '.watcher-state.json');
 
@@ -57,6 +59,29 @@ async function processAndSend(url, recipientEmail) {
   }
   
   console.log(`   Currencies analyzed: ${Object.keys(summary.currencies).join(', ') || 'none'}`);
+
+  // --- Add Economic Calendar Data ---
+  try {
+    const currencies = Object.keys(summary.currencies);
+    if (currencies.length > 0) {
+      console.log(`\n📅 Fetching economic calendar for: ${currencies.join(', ')}...`);
+      const eventsByCurrency = await getEventsForCurrencies(currencies);
+      
+      // Inject events into summary
+      for (const [currency, events] of Object.entries(eventsByCurrency)) {
+        if (summary.currencies[currency]) {
+          summary.currencies[currency].events = events;
+          if (events.length > 0) {
+            console.log(`   ✅ Added ${events.length} events for ${currency}`);
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.error(`   ⚠️ Failed to fetch economic calendar: ${err.message}`);
+    // Don't stop process, just continue without calendar data
+  }
+  // ----------------------------------
 
   // Save preview
   const outputDir = path.join(__dirname, '..', 'output');

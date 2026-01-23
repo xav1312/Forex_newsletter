@@ -28,6 +28,33 @@ function createNewsletterHTML(article, summary) {
       const colors = SENTIMENT_COLORS[data.sentiment] || SENTIMENT_COLORS.neutre;
       const currencyName = CURRENCY_NAMES[code] || code;
       
+      // Economic events HTML
+      let eventsHtml = '';
+      if (data.events && data.events.length > 0) {
+        eventsHtml = `
+          <div style="margin-top: 16px; background: rgba(255,255,255,0.5); border-radius: 8px; padding: 10px;">
+            <h5 style="margin: 0 0 8px 0; font-size: 12px; color: ${colors.text}; text-transform: uppercase;">
+              📅 Calendrier Éco (Aujourd'hui)
+            </h5>
+            <ul style="margin: 0; padding: 0; list-style: none;">
+              ${data.events.map(event => {
+                const time = event.date ? new Date(event.date).toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'}) : '';
+                const impactColor = event.impact === 'High' ? '#ef4444' : '#f59e0b'; // Red for High, Orange for Medium
+                const impactIcon = event.impact === 'High' ? '🔴' : '🟠';
+                
+                return `
+                <li style="display: flex; align-items: flex-start; margin-bottom: 6px; font-size: 12px; color: #4b5563;">
+                  <span style="min-width: 45px; font-weight: 600; color: #1f2937;">${time}</span>
+                  <span style="margin-right: 6px;" title="${event.impact} Impact">${impactIcon}</span>
+                  <span>${event.title}</span>
+                </li>
+                `;
+              }).join('')}
+            </ul>
+          </div>
+        `;
+      }
+
       return `
         <tr>
           <td style="padding: 0 32px 16px 32px;">
@@ -55,6 +82,8 @@ function createNewsletterHTML(article, summary) {
                   `).join('')}
                 </div>
               ` : ''}
+              
+              ${eventsHtml}
             </div>
           </td>
         </tr>

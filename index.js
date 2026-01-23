@@ -4,6 +4,7 @@ const { scrapeArticle } = require('./src/scraper');
 const { summarizeWithGemini, simpleSummary } = require('./src/summarizer');
 const { sendNewsletter, previewNewsletter } = require('./src/emailer');
 const { getLatestArticle, getRecentArticles } = require('./src/sources/ing-think');
+const { getEventsForCurrencies } = require('./src/economics');
 const { checkForNewArticle, startWatcher } = require('./src/watcher');
 const fs = require('fs');
 const path = require('path');
@@ -47,6 +48,26 @@ async function processArticle(url, options = {}) {
     const currencyCount = Object.keys(summary.currencies || {}).length;
     console.log(`   Currencies analyzed: ${currencyCount}`);
     console.log(`   Mentioned: ${summary.mentionedCurrencies?.join(', ') || 'none'}\n`);
+
+    // Step 2.5: Add Economic Calendar
+    try {
+      const currencies = Object.keys(summary.currencies || {});
+      if (currencies.length > 0) {
+        console.log('📅 Step 2.5: Fetching economic calendar...');
+        const eventsByCurrency = await getEventsForCurrencies(currencies);
+        
+        let eventCount = 0;
+        for (const [currency, events] of Object.entries(eventsByCurrency)) {
+          if (summary.currencies[currency]) {
+            summary.currencies[currency].events = events;
+            eventCount += events.length;
+          }
+        }
+        console.log(`   ✅ Added ${eventCount} high-impact events\n`);
+      }
+    } catch (err) {
+      console.error(`   ⚠️ Failed to fetch calendar: ${err.message}\n`);
+    }
 
     // Step 3: Generate newsletter
     console.log('📧 Step 3: Creating newsletter...');
@@ -162,7 +183,8 @@ ENVIRONMENT VARIABLES (in .env file):
     return;
   } else if (command === 'check') {
     // Single check for cron jobs
-    processPromise = checkForNewArticle();
+    const force = process.argv.includes('--force');
+    processPromise = checkForNewArticle({ forceProcess: force });
   } else if (command === 'ing') {
     // Auto-fetch latest ING Think FX article
     processPromise = processLatestING({ sendEmail });

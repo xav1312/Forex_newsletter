@@ -5,6 +5,12 @@ on:
     # Toutes les 15 minutes, de 8h à 20h UTC (9h-21h France), du lundi au vendredi
     - cron: "*/15 8-20 * * 1-5"
   workflow_dispatch: # Permet de lancer manuellement depuis l'interface GitHub
+    inputs:
+      force_run:
+        description: "Force newsletter generation even if article already processed"
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   check-and-send:
@@ -29,8 +35,12 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           RECIPIENT_EMAIL: ${{ secrets.RECIPIENT_EMAIL }}
-          # Les autres variables SMTP sont optionnelles si on utilise Resend
-        run: node index.js check
+        run: |
+          if [ "${{ inputs.force_run }}" == "true" ]; then
+            node index.js check --force
+          else
+            node index.js check
+          fi
 
       - name: Commit and push if state changed
         run: |

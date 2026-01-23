@@ -80,37 +80,34 @@ async function summarizeWithGroq(article, options = {}) {
     ? mentionedCurrencies.map(c => `${c} (${CURRENCY_NAMES[c]})`).join(', ')
     : 'Aucune devise spécifique détectée';
 
-  const prompt = `Tu es un expert en analyse FX (Foreign Exchange) et rédacteur de newsletters financières en français.
+  const prompt = `Tu es un Stratège Macro FX Senior. Tu t'adresses à des investisseurs professionnels.
 
-ARTICLE ORIGINAL (en anglais):
+ARTICLE SOURCE (ING FX Daily):
 Titre: ${article.title}
-Source: ${article.siteName}
-Contenu: ${article.content.substring(0, 15000)}
+Contenu: ${article.content.substring(0, 20000)}
 
-DEVISES DÉTECTÉES: ${currencyList}
+INSTRUCTIONS STRICTES :
+1. Ton rôle est purement FONDAMENTAL (Macro-économie, Banques Centrales, Géopolitique).
+2. Ne donne AUCUN niveau technique (support/résistance) sauf s'il est explicitement cité dans le texte.
+3. Ne jamais inventer d'information. Base-toi uniquement sur l'article.
+4. Synthétise les drivers principaux (pourquoi la devise bouge ?).
 
-INSTRUCTIONS:
-1. TRADUIS et résume cet article en FRANÇAIS.
-2. Pour CHAQUE devise mentionnée ci-dessus, crée une section.
-3. Sois précis, professionnel et synthétique.
-
-FORMAT DE RÉPONSE ATTENDU (JSON pur uniquement, pas de markdown):
+FORMAT DE RÉPONSE (JSON pur):
 {
-  "title": "Titre traduit en français",
-  "introduction": "Introduction générale de 2-3 phrases sur le contexte FX actuel",
+  "title": "Titre en Français (Fidèle à l'original)",
+  "introduction": "Contexte macro global résumé en 2 phrases (Risk-On/Off, narratif principal)",
   "currencies": {
     "CODE_DEVISE": {
-      "sentiment": "haussier" ou "baissier" ou "neutre",
-      "emoji": "📈" ou "📉" ou "➡️",
-      "summary": "Résumé de 2-3 phrases sur les perspectives...",
-      "factors": ["Facteur 1", "Facteur 2"]
+      "sentiment": "haussier" | "baissier" | "neutre",
+      "emoji": "📈" | "📉" | "➡️",
+      "summary": "Analyse fondamentale précise (Moteurs du mouvement : taux, data, discours BC).",
+      "factors": ["Driver 1 (ex: Inflation US)", "Driver 2 (ex: BCE dovish)"]
     }
   },
-  "conclusion": "Conclusion et perspectives générales",
-  "keyTakeaway": "Le point clé à retenir pour un trader"
+  "keyTakeaway": "L'idée macro dominante de l'article."
 }
 
-IMPORTANT: Réponds UNIQUEMENT avec le JSON valide. Pas de texte avant ni après.`;
+IMPORTANT: Réponds UNIQUEMENT avec le JSON valide.`;
 
   try {
     console.log(`🤖 Generating French summary with Groq (Llama 3)...`);

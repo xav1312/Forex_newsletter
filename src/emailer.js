@@ -28,25 +28,32 @@ function createNewsletterHTML(article, summary) {
       const colors = SENTIMENT_COLORS[data.sentiment] || SENTIMENT_COLORS.neutre;
       const currencyName = CURRENCY_NAMES[code] || code;
       
-      // Economic events HTML
+      // Economic events HTML (avec lien historique)
       let eventsHtml = '';
       if (data.events && data.events.length > 0) {
         eventsHtml = `
-          <div style="margin-top: 16px; background: rgba(255,255,255,0.5); border-radius: 8px; padding: 10px;">
-            <h5 style="margin: 0 0 8px 0; font-size: 12px; color: ${colors.text}; text-transform: uppercase;">
-              📅 Calendrier Éco (Aujourd'hui)
+          <div style="margin-top: 16px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px;">
+            <h5 style="margin: 0 0 10px 0; font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 1px; font-weight: 700;">
+              📅 CALENDRIER ÉCO (AUJOURD'HUI)
             </h5>
             <ul style="margin: 0; padding: 0; list-style: none;">
               ${data.events.map(event => {
                 const time = event.date ? new Date(event.date).toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'}) : '';
-                const impactColor = event.impact === 'High' ? '#ef4444' : '#f59e0b'; // Red for High, Orange for Medium
+                const impactColor = event.impact === 'High' ? '#ef4444' : '#f59e0b';
                 const impactIcon = event.impact === 'High' ? '🔴' : '🟠';
+                // Link to ForexFactory calendar for that day to see graphs
+                const eventLink = `https://www.forexfactory.com/calendar?day=${new Date().toISOString().split('T')[0]}`;
                 
                 return `
-                <li style="display: flex; align-items: flex-start; margin-bottom: 6px; font-size: 12px; color: #4b5563;">
-                  <span style="min-width: 45px; font-weight: 600; color: #1f2937;">${time}</span>
-                  <span style="margin-right: 6px;" title="${event.impact} Impact">${impactIcon}</span>
-                  <span>${event.title}</span>
+                <li style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; font-size: 13px; padding-bottom: 8px; border-bottom: 1px solid #f1f5f9;">
+                  <div style="display: flex; align-items: center;">
+                    <span style="min-width: 45px; font-weight: 600; color: #1e293b;">${time}</span>
+                    <span style="font-size: 10px; margin-right: 8px;">${impactIcon}</span>
+                    <span style="color: #334155; font-weight: 500;">${event.title}</span>
+                  </div>
+                  <a href="${eventLink}" style="font-size: 11px; color: #3b82f6; text-decoration: none; border: 1px solid #3b82f6; padding: 2px 6px; border-radius: 4px; white-space: nowrap;">
+                    📊 Graph
+                  </a>
                 </li>
                 `;
               }).join('')}
@@ -58,26 +65,28 @@ function createNewsletterHTML(article, summary) {
       return `
         <tr>
           <td style="padding: 0 32px 16px 32px;">
-            <div style="background: ${colors.bg}; border-left: 4px solid ${colors.border}; padding: 16px 20px; border-radius: 0 12px 12px 0;">
-              <div style="display: flex; align-items: center; margin-bottom: 8px;">
-                <span style="font-size: 24px; margin-right: 12px;">${data.emoji || '💱'}</span>
+            <div style="background: ${colors.bg}; border-left: 4px solid ${colors.border}; padding: 20px; border-radius: 0 12px 12px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+              <div style="display: flex; align-items: center; margin-bottom: 12px;">
+                <span style="font-size: 28px; margin-right: 16px;">${data.emoji || '💱'}</span>
                 <div>
-                  <h4 style="color: ${colors.text}; margin: 0; font-size: 16px; font-weight: 700;">
-                    ${code} - ${currencyName}
+                  <h4 style="color: ${colors.text}; margin: 0; font-size: 18px; font-weight: 800;">
+                    ${code} <span style="font-weight: 400; opacity: 0.8; font-size: 14px;">- ${currencyName}</span>
                   </h4>
-                  <span style="color: ${colors.text}; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
+                  <span style="background: ${colors.text}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700;">
                     ${data.sentiment}
                   </span>
                 </div>
               </div>
-              <p style="color: #374151; margin: 8px 0 12px 0; font-size: 14px; line-height: 1.6;">
+              
+              <p style="color: #334155; margin: 0 0 12px 0; font-size: 15px; line-height: 1.6; text-align: justify;">
                 ${data.summary}
               </p>
+
               ${data.factors && data.factors.length > 0 ? `
-                <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+                <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px;">
                   ${data.factors.map(factor => `
-                    <span style="background: rgba(255,255,255,0.7); color: #4b5563; padding: 4px 10px; border-radius: 16px; font-size: 11px;">
-                      ${factor}
+                    <span style="background: white; border: 1px solid ${colors.border}; color: ${colors.text}; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">
+                      # ${factor}
                     </span>
                   `).join('')}
                 </div>

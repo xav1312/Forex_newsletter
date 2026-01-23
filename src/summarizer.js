@@ -57,17 +57,20 @@ function detectCurrencies(content) {
 }
 
 /**
- * Summarize article with currency-specific sections in French
+ * Summarize article using Groq API (Llama 3)
  * @param {object} article - The article object from scraper
  * @param {object} options - Summarization options
- * @returns {Promise<{title: string, introduction: string, currencies: object, conclusion: string}>}
+ * @returns {Promise<{title: string, introduction: string, currencies: object, conclusion: string, keyTakeaway: string}>}
  */
-async function summarizeWithGemini(article, options = {}) {
-  const apiKey = process.env.GEMINI_API_KEY;
+async function summarizeWithGroq(article, options = {}) {
+  const Groq = require('groq-sdk');
+  const apiKey = process.env.GROQ_API_KEY;
   
   if (!apiKey) {
-    throw new Error('GEMINI_API_KEY not found in environment variables');
+    throw new Error('GROQ_API_KEY not found in environment variables');
   }
+
+  const groq = new Groq({ apiKey });
 
   // Detect mentioned currencies
   const mentionedCurrencies = detectCurrencies(article.content);
@@ -82,27 +85,24 @@ async function summarizeWithGemini(article, options = {}) {
 ARTICLE ORIGINAL (en anglais):
 Titre: ${article.title}
 Source: ${article.siteName}
-Contenu: ${article.content.substring(0, 10000)}
+Contenu: ${article.content.substring(0, 15000)}
 
 DEVISES DÉTECTÉES: ${currencyList}
 
 INSTRUCTIONS:
-1. TRADUIS et résume cet article en FRANÇAIS
-2. Pour CHAQUE devise mentionnée parmi celles détectées, crée une section avec:
-   - Le sentiment (haussier 📈 / baissier 📉 / neutre ➡️)
-   - Un résumé de 2-3 phrases sur les perspectives de cette devise
-   - Les facteurs clés qui influencent cette devise
-3. Ajoute une introduction générale et une conclusion
+1. TRADUIS et résume cet article en FRANÇAIS.
+2. Pour CHAQUE devise mentionnée ci-dessus, crée une section.
+3. Sois précis, professionnel et synthétique.
 
-FORMAT DE RÉPONSE (JSON strict):
+FORMAT DE RÉPONSE ATTENDU (JSON pur uniquement, pas de markdown):
 {
   "title": "Titre traduit en français",
   "introduction": "Introduction générale de 2-3 phrases sur le contexte FX actuel",
   "currencies": {
-    "USD": {
-      "sentiment": "haussier|baissier|neutre",
-      "emoji": "📈|📉|➡️",
-      "summary": "Résumé de 2-3 phrases sur le dollar américain...",
+    "CODE_DEVISE": {
+      "sentiment": "haussier" ou "baissier" ou "neutre",
+      "emoji": "📈" ou "📉" ou "➡️",
+      "summary": "Résumé de 2-3 phrases sur les perspectives...",
       "factors": ["Facteur 1", "Facteur 2"]
     }
   },
@@ -110,40 +110,36 @@ FORMAT DE RÉPONSE (JSON strict):
   "keyTakeaway": "Le point clé à retenir pour un trader"
 }
 
-IMPORTANT: 
-- Ne retourne QUE les devises réellement mentionnées dans l'article parmi: ${mentionedCurrencies.join(', ')}
-- Réponds UNIQUEMENT avec le JSON, sans markdown ni texte supplémentaire
-- Tout le contenu doit être en FRANÇAIS`;
+IMPORTANT: Réponds UNIQUEMENT avec le JSON valide. Pas de texte avant ni après.`;
 
   try {
-    console.log(`🤖 Generating French summary with Gemini...`);
+    console.log(`🤖 Generating French summary with Groq (Llama 3)...`);
     
-    const response = await axios.post(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite-preview-02-05:generateContent?key=${apiKey}`,
-      {
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 4096,
+    const completion = await groq.chat.completions.create({
+      messages: [
+        {
+          role: "system",
+          content: "You are a financial analyst JSON generator. Output only valid JSON."
         },
-      },
-      {
-        headers: { 'Content-Type': 'application/json' },
-        timeout: 90000,
-      }
-    );
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+      model: "llama-3.3-70b-versatile",
+      temperature: 0.5,
+      response_format: { type: "json_object" } // Force JSON mode
+    });
 
-    const textResponse = response.data.candidates?.[0]?.content?.parts?.[0]?.text;
+    const textResponse = completion.choices[0]?.message?.content;
     
     if (!textResponse) {
-      throw new Error('Empty response from Gemini API');
+      throw new Error('Empty response from Groq API');
     }
 
-    // Parse the JSON response
-    const cleanedResponse = textResponse.replace(/```json\n?|\n?```/g, '').trim();
-    const result = JSON.parse(cleanedResponse);
+    const result = JSON.parse(textResponse);
     
-    console.log(`✅ French summary generated with ${Object.keys(result.currencies || {}).length} currency sections`);
+    console.log(`✅ Summary generated with ${Object.keys(result.currencies || {}).length} currency sections`);
     
     return {
       title: result.title || article.title,
@@ -153,15 +149,9 @@ IMPORTANT:
       keyTakeaway: result.keyTakeaway || '',
       mentionedCurrencies: mentionedCurrencies,
     };
+
   } catch (error) {
-    console.error(`❌ Error summarizing:`, error.message);
-    
-    // Fallback to simple summary on rate limit errors
-    if (error.response?.status === 429 || error.message.includes('429')) {
-      console.log(`   ⚠️  API rate limited - using fallback summary`);
-      return simpleSummary(article);
-    }
-    
+    console.error(`❌ Error summarizing with Groq:`, error.message);
     throw error;
   }
 }
@@ -210,7 +200,7 @@ function simpleSummary(article) {
 }
 
 module.exports = { 
-  summarizeWithGemini, 
+  summarizeWithGroq, 
   simpleSummary, 
   detectCurrencies,
   TRACKED_CURRENCIES,

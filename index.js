@@ -35,11 +35,16 @@ async function processArticle(url, options = {}) {
     console.log(`   Content length: ${article.content.length} characters\n`);
 
     // Step 2: Summarize
-    console.log('🤖 Step 2: Generating French summary...');
+    console.log('🤖 Step 2: Generating French summary with Groq...');
     let summary;
     
-    if (useAI && process.env.GEMINI_API_KEY) {
-      summary = await summarizeWithGemini(article);
+    if (useAI && process.env.GROQ_API_KEY) {
+      try {
+        summary = await summarizeWithGroq(article);
+      } catch (error) {
+        console.error('   ❌ Groq AI failed:', error.message);
+        summary = simpleSummary(article);
+      }
     } else {
       console.log('   (Using simple extractive summary - no AI API key found)');
       summary = simpleSummary(article);

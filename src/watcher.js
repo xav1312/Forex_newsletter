@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { getLatestArticle } = require('./sources/ing-think');
 const { scrapeArticle } = require('./scraper');
-const { summarizeWithGemini, simpleSummary } = require('./summarizer');
+const { summarizeWithGroq, simpleSummary } = require('./summarizer');
 const { sendNewsletter, previewNewsletter } = require('./emailer');
 
 const { getEventsForCurrencies } = require('./economics');
@@ -48,13 +48,18 @@ async function processAndSend(url, recipientEmail) {
   console.log(`   Title: ${article.title}`);
   console.log(`   Content: ${article.content.length} characters`);
 
-  console.log(`\n🤖 Generating French summary...`);
+  console.log(`\n🤖 Generating French summary with Groq...`);
   let summary;
   
-  if (process.env.GEMINI_API_KEY) {
-    summary = await summarizeWithGemini(article);
+  if (process.env.GROQ_API_KEY) {
+    try {
+      summary = await summarizeWithGroq(article);
+    } catch (error) {
+      console.error('   ❌ Groq AI failed:', error.message);
+      summary = simpleSummary(article);
+    }
   } else {
-    console.log('   ⚠️  No GEMINI_API_KEY - using simple summary');
+    console.log('   ⚠️  No GROQ_API_KEY - using simple summary');
     summary = simpleSummary(article);
   }
   

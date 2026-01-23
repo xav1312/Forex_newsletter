@@ -1,0 +1,29 @@
+{
+  "name": "forex_newsletter",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xav1312/Forex_newsletter.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/xav1312/Forex_newsletter/issues"
+  },
+  "homepage": "https://github.com/xav1312/Forex_newsletter#readme",
+  "dependencies": {
+    "@mozilla/readability": "^0.6.0",
+    "axios": "^1.13.2",
+    "dotenv": "^17.2.3",
+    "jsdom": "^27.4.0",
+    "nodemailer": "^7.0.12",
+    "resend": "^6.8.0"
+  }
+}

@@ -1,0 +1,191 @@
+require('dotenv').config();
+
+const { scrapeArticle } = require('./src/scraper');
+const { summarizeWithGemini, simpleSummary } = require('./src/summarizer');
+const { sendNewsletter, previewNewsletter } = require('./src/emailer');
+const { getLatestArticle, getRecentArticles } = require('./src/sources/ing-think');
+const { checkForNewArticle, startWatcher } = require('./src/watcher');
+const fs = require('fs');
+const path = require('path');
+
+/**
+ * Main function to process an article into a newsletter
+ * @param {string} url - The article URL to process
+ * @param {object} options - Processing options
+ */
+async function processArticle(url, options = {}) {
+  const {
+    useAI = true,
+    sendEmail = false,
+    recipientEmail = process.env.RECIPIENT_EMAIL,
+    savePreview = true,
+  } = options;
+
+  console.log('\n' + '='.repeat(60));
+  console.log('🚀 NEWSLETTER GENERATOR');
+  console.log('='.repeat(60) + '\n');
+
+  try {
+    // Step 1: Scrape the article
+    console.log('📥 Step 1: Scraping article...');
+    const article = await scrapeArticle(url);
+    console.log(`   Title: ${article.title}`);
+    console.log(`   Source: ${article.siteName}`);
+    console.log(`   Content length: ${article.content.length} characters\n`);
+
+    // Step 2: Summarize
+    console.log('🤖 Step 2: Generating French summary...');
+    let summary;
+    
+    if (useAI && process.env.GEMINI_API_KEY) {
+      summary = await summarizeWithGemini(article);
+    } else {
+      console.log('   (Using simple extractive summary - no AI API key found)');
+      summary = simpleSummary(article);
+    }
+    
+    const currencyCount = Object.keys(summary.currencies || {}).length;
+    console.log(`   Currencies analyzed: ${currencyCount}`);
+    console.log(`   Mentioned: ${summary.mentionedCurrencies?.join(', ') || 'none'}\n`);
+
+    // Step 3: Generate newsletter
+    console.log('📧 Step 3: Creating newsletter...');
+    const html = previewNewsletter(article, summary);
+
+    // Save preview to file
+    if (savePreview) {
+      const outputDir = path.join(__dirname, 'output');
+      if (!fs.existsSync(outputDir)) {
+        fs.mkdirSync(outputDir, { recursive: true });
+      }
+      
+      const filename = `fx_daily_${Date.now()}.html`;
+      const filepath = path.join(outputDir, filename);
+      fs.writeFileSync(filepath, html);
+      console.log(`   ✅ Preview saved to: ${filepath}\n`);
+    }
+
+    // Step 4: Send email (optional)
+    if (sendEmail && recipientEmail) {
+      console.log('📤 Step 4: Sending email...');
+      await sendNewsletter(article, summary, { to: recipientEmail });
+      console.log('   ✅ Email sent successfully!\n');
+    } else if (sendEmail) {
+      console.log('   ⚠️  No recipient email configured. Set RECIPIENT_EMAIL in .env\n');
+    }
+
+    console.log('='.repeat(60));
+    console.log('✨ DONE! Newsletter generated successfully.');
+    console.log('='.repeat(60) + '\n');
+
+    return { article, summary, html };
+
+  } catch (error) {
+    console.error('\n❌ Error processing article:', error.message);
+    throw error;
+  }
+}
+
+/**
+ * Automatically fetch and process the latest ING Think FX article
+ * @param {object} options - Processing options
+ */
+async function processLatestING(options = {}) {
+  console.log('\n' + '='.repeat(60));
+  console.log('🏦 ING THINK FX - AUTO FETCH');
+  console.log('='.repeat(60) + '\n');
+
+  try {
+    // Get the latest article URL
+    const latestArticle = await getLatestArticle();
+    console.log(`\n📰 Latest article found: "${latestArticle.title}"\n`);
+    
+    // Process it
+    return await processArticle(latestArticle.url, options);
+  } catch (error) {
+    console.error('\n❌ Error fetching ING Think:', error.message);
+    throw error;
+  }
+}
+
+// CLI usage
+if (require.main === module) {
+  const command = process.argv[2];
+  const sendEmail = process.argv.includes('--send');
+  const intervalArg = process.argv.find(a => a.startsWith('--interval='));
+  const interval = intervalArg ? parseInt(intervalArg.split('=')[1]) : 30;
+  
+  // Show help
+  if (!command || command === '--help' || command === '-h') {
+    console.log(`
+📰 FX Daily Newsletter Generator - Usage:
+
+COMMANDS:
+  ing                   Fetch the latest ING Think FX article
+  watch                 🆕 Auto-watch for new FX Daily articles & send emails
+  check                 🆕 Check once for new articles (for cron jobs)
+  <article-url>         Process a specific article URL
+
+OPTIONS:
+  --send                Send the newsletter via email
+  --interval=<minutes>  Watch interval in minutes (default: 30)
+
+EXAMPLES:
+  node index.js ing                     # Get latest ING Think FX article
+  node index.js ing --send              # Get latest and send by email
+  node index.js watch                   # Start auto-watcher (checks every 30 min)
+  node index.js watch --interval=15     # Check every 15 minutes
+  node index.js check                   # Check once (for cron)
+
+CRON EXAMPLE (check every hour at :00):
+  0 * * * * cd /path/to/project && node index.js check
+
+ENVIRONMENT VARIABLES (in .env file):
+  GEMINI_API_KEY      - Google Gemini API key for French AI summaries
+  SMTP_HOST           - SMTP server host
+  SMTP_PORT           - SMTP server port (default: 587)
+  SMTP_USER           - SMTP username
+  SMTP_PASSWORD       - SMTP password
+  EMAIL_FROM          - From email address
+  RECIPIENT_EMAIL     - Default recipient email (REQUIRED for watch/check)
+    `);
+    process.exit(0);
+  }
+
+  // Handle commands
+  let processPromise;
+  
+  if (command === 'watch') {
+    // Start the auto-watcher
+    startWatcher({ intervalMinutes: interval });
+    // Don't exit - keep running
+    return;
+  } else if (command === 'check') {
+    // Single check for cron jobs
+    processPromise = checkForNewArticle();
+  } else if (command === 'ing') {
+    // Auto-fetch latest ING Think FX article
+    processPromise = processLatestING({ sendEmail });
+  } else if (command.startsWith('http')) {
+    // Process specific URL
+    processPromise = processArticle(command, { sendEmail });
+  } else {
+    console.error(`❌ Unknown command: ${command}`);
+    console.log('Run "node index.js --help" for usage information.');
+    process.exit(1);
+  }
+
+  processPromise
+    .then(() => process.exit(0))
+    .catch(() => process.exit(1));
+}
+
+module.exports = { 
+  processArticle, 
+  processLatestING, 
+  getLatestArticle, 
+  getRecentArticles,
+  checkForNewArticle,
+  startWatcher,
+};
+

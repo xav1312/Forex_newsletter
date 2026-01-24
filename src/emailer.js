@@ -77,7 +77,7 @@ function createNewsletterHTML(article, summary) {
         eventsHtml = `
           <div style="margin-top: 16px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px;">
             <h5 style="margin: 0 0 10px 0; font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 1px; font-weight: 700;">
-              📅 CALENDRIER ÉCO (AUJOURD'HUI)
+              📅 CALENDRIER ÉCO (48H GLISSANTES)
             </h5>
             <ul style="margin: 0; padding: 0; list-style: none;">
               ${data.events.map(event => {

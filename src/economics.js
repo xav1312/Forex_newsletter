@@ -54,13 +54,16 @@ async function getEconomicEvents() {
 
       const eventDate = new Date(year, month - 1, day, hours, minutes);
       
-      // Filter: Only keep events for TODAY (and maybe tomorrow early morning)
-      // Check if eventDate is same day as today
-      const isToday = eventDate.getDate() === today.getDate() && 
-                      eventDate.getMonth() === today.getMonth() && 
-                      eventDate.getFullYear() === today.getFullYear();
+      // Filter: Keep events from YESTERDAY, TODAY and TOMORROW (to handle UTC delays)
+      const yesterday = new Date(today);
+      yesterday.setDate(today.getDate() - 1);
       
-      if (!isToday) return;
+      const isRelevantDate = 
+        (eventDate.getDate() === today.getDate() && eventDate.getMonth() === today.getMonth()) ||
+        (eventDate.getDate() === tomorrow.getDate() && eventDate.getMonth() === tomorrow.getMonth()) ||
+        (eventDate.getDate() === yesterday.getDate() && eventDate.getMonth() === yesterday.getMonth());
+      
+      if (!isRelevantDate) return;
 
       const impact = node.querySelector('impact')?.textContent || 'Low';
       const country = node.querySelector('country')?.textContent || '';

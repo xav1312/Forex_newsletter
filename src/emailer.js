@@ -152,81 +152,121 @@ function createNewsletterHTML(article, summary) {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FX Daily - ${summary.title}</title>
+  <style>
+    body { margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background-color: #f3f4f6; color: #374151; }
+    .container { max-width: 600px; margin: 0 auto; background-color: #f3f4f6; }
+    .header { background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); padding: 30px 20px; text-align: center; border-radius: 0 0 16px 16px; margin-bottom: 24px; color: white; }
+    .card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+    .card-title { margin: 0 0 12px 0; color: #111827; font-size: 18px; font-weight: 700; display: flex; align-items: center; justify-content: space-between; }
+    .sentiment-badge { font-size: 11px; padding: 4px 10px; border-radius: 20px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; }
+    .text-content { line-height: 1.6; color: #4b5563; font-size: 15px; margin: 0 0 12px 0; }
+    .calendar-box { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; margin-top: 16px; }
+    .calendar-title { font-size: 12px; font-weight: 700; color: #6b7280; text-transform: uppercase; margin-bottom: 8px; border-bottom: 1px solid #e5e7eb; padding-bottom: 4px; }
+    .event-item { display: flex; align-items: center; justify-content: space-between; font-size: 13px; padding: 6px 0; }
+    .btn-graph { font-size: 10px; color: #2563eb; text-decoration: none; border: 1px solid #dbeafe; padding: 2px 8px; border-radius: 4px; background: #eff6ff; }
+    .footer { text-align: center; padding: 24px; color: #9ca3af; font-size: 12px; }
+  </style>
 </head>
-<body style="margin: 0; padding: 0; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f1f5f9; color: #334155;">
-  <table role="presentation" style="width: 100%; border-collapse: collapse;">
-    <tr>
-      <td align="center" style="padding: 20px 0;">
-        
-        <!-- MAIN CONTAINER (Standard: 600px for Mobile Compat) -->
-        <table role="presentation" style="max-width: 600px; width: 100%; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); margin: 0 auto;">
-          
-          <!-- PROFESSIONAL HEADER -->
-          <tr>
-            <td style="background: #0f172a; padding: 30px 25px; text-align: left; border-bottom: 4px solid #3b82f6;">
-              <p style="color: #94a3b8; font-size: 10px; text-transform: uppercase; letter-spacing: 2px; margin: 0 0 8px 0; font-weight: 600;">
-                ANTIGRAVITY RESEARCH • ${date.toUpperCase()}
-              </p>
-              <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.5px;">
-                FX Daily Briefing
-              </h1>
-            </td>
-          </tr>
-          
-          <!-- TITLE & INTRO -->
-          <tr>
-            <td style="padding: 30px 25px 15px 25px;">
-              <h2 style="color: #1e293b; margin: 0 0 15px 0; font-size: 20px; font-weight: 700; line-height: 1.3;">
-                ${summary.title}
-              </h2>
-              <div style="font-size: 15px; line-height: 1.6; color: #475569; border-left: 3px solid #cbd5e1; padding-left: 15px;">
-                ${summary.introduction}
-              </div>
-            </td>
-          </tr>
+<body>
+  <div class="container">
+    
+    <!-- HEADER -->
+    <div class="header">
+      <div style="font-size: 32px; margin-bottom: 8px;">📊</div>
+      <h1 style="margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.5px;">FX Daily Briefing</h1>
+      <p style="margin: 8px 0 0 0; opacity: 0.9; font-size: 14px;">${date}</p>
+    </div>
 
-          <!-- KEY TAKEAWAY -->
-          ${summary.keyTakeaway ? `
-          <tr>
-            <td style="padding: 0 25px 25px 25px;">
-              <div style="background: #eff6ff; border: 1px solid #dbeafe; padding: 15px; border-radius: 6px;">
-                <h3 style="color: #1e40af; margin: 0 0 5px 0; font-size: 11px; text-transform: uppercase; font-weight: 700;">
-                  ⚡ L'INSIGHT DU JOUR
-                </h3>
-                <p style="color: #1e3a8a; margin: 0; font-size: 14px; font-weight: 500; line-height: 1.5;">
-                  ${summary.keyTakeaway}
-                </p>
+    <!-- MAIN SUMMARY CARD -->
+    <div style="padding: 0 16px;">
+      <div class="card" style="border-top: 4px solid #3b82f6;">
+        <h2 style="margin: 0 0 12px 0; font-size: 20px; font-weight: 700; color: #111827;">${summary.title}</h2>
+        <p class="text-content" style="font-size: 16px;">${summary.introduction}</p>
+        
+        ${summary.keyTakeaway ? `
+        <div style="background: #eff6ff; border-left: 4px solid #2563eb; padding: 12px 16px; margin-top: 16px; border-radius: 0 4px 4px 0;">
+          <strong style="color: #1e40af; display: block; font-size: 12px; text-transform: uppercase; margin-bottom: 4px;">💡 Insight du Jour</strong>
+          <span style="color: #1e3a8a; font-weight: 500;">${summary.keyTakeaway}</span>
+        </div>
+        ` : ''}
+      </div>
+
+      <!-- CURRENCY CARDS -->
+      <div style="margin: 24px 0 12px 0; padding-left: 8px;">
+        <h3 style="font-size: 14px; text-transform: uppercase; color: #6b7280; font-weight: 700; letter-spacing: 1px; margin: 0;">Analyse par Devise</h3>
+      </div>
+
+      ${Object.entries(summary.currencies || {}).map(([code, data]) => {
+        const colors = SENTIMENT_COLORS[data.sentiment] || SENTIMENT_COLORS.neutre;
+        const currencyName = CURRENCY_NAMES[code] || code;
+        const badgeStyle = `background:${colors.bg}; color:${colors.text};`;
+        
+        // Calendar logic inside map
+        let eventsHtml = '';
+        if (data.events && data.events.length > 0) {
+          eventsHtml = `
+            <div class="calendar-box">
+              <div class="calendar-title">📅 Calendrier Éco</div>
+              ${data.events.map(event => {
+                const time = event.date ? new Date(event.date).toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'}) : '';
+                const impactIcon = event.impact === 'High' ? '🔴' : '🟠';
+                const teLink = getTradingEconomicsLink(code, event.title);
+                const buttonHtml = teLink ? `<a href="${teLink}" class="btn-graph">Graph ↗</a>` : '';
+                
+                return `
+                <div class="event-item">
+                  <div style="display:flex; align-items:center; flex:1;">
+                    <span style="font-weight:600; color:#111827; width:45px;">${time}</span>
+                    <span style="margin-right:8px; font-size:10px;">${impactIcon}</span>
+                    <span style="color:#4b5563;">${event.title}</span>
+                  </div>
+                  ${buttonHtml}
+                </div>`;
+              }).join('')}
+            </div>`;
+        }
+
+        return `
+        <div class="card" style="border-left: 4px solid ${colors.border};">
+          <div class="card-title">
+            <div style="display:flex; align-items:center;">
+              <span style="font-size:24px; margin-right:12px;">${data.emoji}</span>
+              <div>
+                <span style="display:block;">${code}</span>
+                <span style="display:block; font-size:12px; font-weight:400; color:#6b7280;">${currencyName}</span>
               </div>
-            </td>
-          </tr>
-          ` : ''}
+            </div>
+            <span class="sentiment-badge" style="${badgeStyle}">${data.sentiment}</span>
+          </div>
           
-          <!-- CURRENCY SECTIONS (With Calendar Inside) -->
-          ${currencySectionsHTML}
+          <p class="text-content">${data.summary}</p>
           
-          <!-- CONCLUSION -->
-          <tr>
-            <td style="padding: 15px 25px 30px 25px;">
-              <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 0 0 20px 0;">
-              <h3 style="color: #0f172a; margin: 0 0 10px 0; font-size: 16px;">Perspective Globale</h3>
-              <p style="color: #475569; margin: 0; font-size: 14px; line-height: 1.6;">
-                ${summary.conclusion}
-              </p>
-            </td>
-          </tr>
-          
-          <!-- FOOTER -->
-          <tr>
-            <td style="background: #f8fafc; padding: 25px; text-align: center; border-top: 1px solid #e2e8f0;">
-              <a href="${article.url}" style="display: inline-block; color: #64748b; text-decoration: none; font-size: 12px; font-weight: 500; border-bottom: 1px dotted #cbd5e1;">
-                Lire l'article original sur ING Think ↗
-              </a>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
+          ${data.factors && data.factors.length > 0 ? `
+            <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px;">
+              ${data.factors.map(f => `<span style="background:#f3f4f6; color:#4b5563; font-size:11px; padding:2px 8px; border-radius:4px;"># ${f}</span>`).join('')}
+            </div>` : ''}
+            
+          ${eventsHtml}
+        </div>`;
+      }).join('')}
+
+      <!-- CONCLUSION CARD -->
+      <div class="card" style="background: #f8fafc; border: 1px dashed #cbd5e1;">
+        <h3 style="margin: 0 0 8px 0; font-size: 16px; color: #374151;">🎯 Conclusion</h3>
+        <p class="text-content">${summary.conclusion}</p>
+      </div>
+
+      <div style="text-align:center; margin: 30px 0;">
+        <a href="${article.url}" style="background:#2563eb; color:white; text-decoration:none; padding:12px 24px; border-radius:8px; font-weight:600; font-size:14px;">Lire l'article original</a>
+      </div>
+
+    </div>
+
+    <!-- FOOTER -->
+    <div class="footer">
+      <p>Généré automatiquement par Antigravity • Source: ING Think</p>
+    </div>
+  </div>
 </body>
 </html>
   `.trim();

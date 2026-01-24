@@ -150,74 +150,49 @@ function createNewsletterHTML(article, summary) {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>📊 FX Daily - ${summary.title}</title>
+  <title>FX Daily - ${summary.title}</title>
 </head>
-<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8fafc;">
+<body style="margin: 0; padding: 0; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f1f5f9; color: #334155;">
   <table role="presentation" style="width: 100%; border-collapse: collapse;">
     <tr>
-      <td align="center" style="padding: 40px 20px;">
-        <!-- Header -->
-        <table role="presentation" style="max-width: 600px; width: 100%; background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #0f172a 100%); border-radius: 16px 16px 0 0;">
+      <td align="center" style="padding: 20px 0;">
+        
+        <!-- MAIN CONTAINER (Standard: 600px for Mobile Compat) -->
+        <table role="presentation" style="max-width: 600px; width: 100%; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); margin: 0 auto;">
+          
+          <!-- PROFESSIONAL HEADER -->
           <tr>
-            <td style="padding: 32px; text-align: center;">
-              <div style="font-size: 40px; margin-bottom: 8px;">📊</div>
-              <h1 style="color: #f1f5f9; margin: 0; font-size: 22px; font-weight: 600;">
-                FX Daily Newsletter
-              </h1>
-              <p style="color: #94a3b8; margin: 8px 0 0 0; font-size: 13px;">
-                ${date} • Source: ING Think
+            <td style="background: #0f172a; padding: 30px 25px; text-align: left; border-bottom: 4px solid #3b82f6;">
+              <p style="color: #94a3b8; font-size: 10px; text-transform: uppercase; letter-spacing: 2px; margin: 0 0 8px 0; font-weight: 600;">
+                ANTIGRAVITY RESEARCH • ${date.toUpperCase()}
               </p>
+              <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.5px;">
+                FX Daily Briefing
+              </h1>
             </td>
           </tr>
-        </table>
-        
-        <!-- Main Content -->
-        <table role="presentation" style="max-width: 600px; width: 100%; background: #ffffff; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
-          <!-- Title -->
+          
+          <!-- TITLE & INTRO -->
           <tr>
-            <td style="padding: 28px 32px 12px 32px;">
-              <h2 style="color: #1e293b; margin: 0; font-size: 20px; font-weight: 700; line-height: 1.3;">
+            <td style="padding: 30px 25px 15px 25px;">
+              <h2 style="color: #1e293b; margin: 0 0 15px 0; font-size: 20px; font-weight: 700; line-height: 1.3;">
                 ${summary.title}
               </h2>
-            </td>
-          </tr>
-          
-          <!-- Introduction -->
-          <tr>
-            <td style="padding: 0 32px 24px 32px;">
-              <p style="color: #475569; margin: 0; font-size: 15px; line-height: 1.7; border-left: 3px solid #3b82f6; padding-left: 16px;">
+              <div style="font-size: 15px; line-height: 1.6; color: #475569; border-left: 3px solid #cbd5e1; padding-left: 15px;">
                 ${summary.introduction}
-              </p>
+              </div>
             </td>
           </tr>
-          
-          <!-- Currency Sections Header -->
-          <tr>
-            <td style="padding: 8px 32px 16px 32px;">
-              <h3 style="color: #1e293b; margin: 0; font-size: 16px; font-weight: 600; display: flex; align-items: center;">
-                <span style="margin-right: 8px;">💱</span> Analyse par Devise
-              </h3>
-            </td>
-          </tr>
-          
-          <!-- Currency Sections -->
-          ${currencySectionsHTML || `
-            <tr>
-              <td style="padding: 0 32px 24px 32px;">
-                <p style="color: #64748b; font-style: italic;">Aucune devise majeure spécifiquement analysée dans cet article.</p>
-              </td>
-            </tr>
-          `}
-          
-          <!-- Key Takeaway -->
+
+          <!-- KEY TAKEAWAY -->
           ${summary.keyTakeaway ? `
           <tr>
-            <td style="padding: 8px 32px 24px 32px;">
-              <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); padding: 20px; border-radius: 12px;">
-                <h3 style="color: #92400e; margin: 0 0 8px 0; font-size: 14px; font-weight: 600;">
-                  💡 Point Clé à Retenir
+            <td style="padding: 0 25px 25px 25px;">
+              <div style="background: #eff6ff; border: 1px solid #dbeafe; padding: 15px; border-radius: 6px;">
+                <h3 style="color: #1e40af; margin: 0 0 5px 0; font-size: 11px; text-transform: uppercase; font-weight: 700;">
+                  ⚡ L'INSIGHT DU JOUR
                 </h3>
-                <p style="color: #78350f; margin: 0; font-size: 14px; line-height: 1.6; font-weight: 500;">
+                <p style="color: #1e3a8a; margin: 0; font-size: 14px; font-weight: 500; line-height: 1.5;">
                   ${summary.keyTakeaway}
                 </p>
               </div>
@@ -225,40 +200,26 @@ function createNewsletterHTML(article, summary) {
           </tr>
           ` : ''}
           
-          <!-- Conclusion -->
+          <!-- CURRENCY SECTIONS (With Calendar Inside) -->
+          ${currencySectionsHTML}
+          
+          <!-- CONCLUSION -->
           <tr>
-            <td style="padding: 0 32px 24px 32px;">
-              <div style="background: #f1f5f9; padding: 16px 20px; border-radius: 8px;">
-                <h3 style="color: #475569; margin: 0 0 8px 0; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">
-                  📈 Perspectives
-                </h3>
-                <p style="color: #334155; margin: 0; font-size: 14px; line-height: 1.6;">
-                  ${summary.conclusion}
-                </p>
-              </div>
+            <td style="padding: 15px 25px 30px 25px;">
+              <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 0 0 20px 0;">
+              <h3 style="color: #0f172a; margin: 0 0 10px 0; font-size: 16px;">Perspective Globale</h3>
+              <p style="color: #475569; margin: 0; font-size: 14px; line-height: 1.6;">
+                ${summary.conclusion}
+              </p>
             </td>
           </tr>
           
-          <!-- CTA Button -->
+          <!-- FOOTER -->
           <tr>
-            <td style="padding: 8px 32px 32px 32px; text-align: center;">
-              <a href="${article.url}" style="display: inline-block; background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-size: 14px; font-weight: 600; box-shadow: 0 4px 6px -1px rgba(249, 115, 22, 0.4);">
-                Lire l'article original (EN) →
+            <td style="background: #f8fafc; padding: 25px; text-align: center; border-top: 1px solid #e2e8f0;">
+              <a href="${article.url}" style="display: inline-block; color: #64748b; text-decoration: none; font-size: 12px; font-weight: 500; border-bottom: 1px dotted #cbd5e1;">
+                Lire l'article original sur ING Think ↗
               </a>
-            </td>
-          </tr>
-        </table>
-        
-        <!-- Footer -->
-        <table role="presentation" style="max-width: 600px; width: 100%; background: #1e293b; border-radius: 0 0 16px 16px;">
-          <tr>
-            <td style="padding: 24px 32px; text-align: center;">
-              <p style="color: #94a3b8; margin: 0 0 8px 0; font-size: 12px;">
-                Newsletter FX générée automatiquement depuis ING Think
-              </p>
-              <p style="color: #64748b; margin: 0; font-size: 11px;">
-                Devises suivies: USD • EUR • GBP • JPY • AUD • NZD • CAD • CHF • CNY
-              </p>
             </td>
           </tr>
         </table>

@@ -8,6 +8,48 @@ const SENTIMENT_COLORS = {
   neutre: { bg: '#f3f4f6', text: '#374151', border: '#9ca3af' },
 };
 
+const COUNTRY_MAP = {
+  'USD': 'united-states',
+  'EUR': 'euro-area',
+  'GBP': 'united-kingdom',
+  'JPY': 'japan',
+  'AUD': 'australia',
+  'NZD': 'new-zealand',
+  'CAD': 'canada',
+  'CHF': 'switzerland',
+  'CNY': 'china'
+};
+
+const INDICATOR_MAP = [
+  { keywords: ['Interest Rate', 'Decision', 'Rate'], slug: 'interest-rate' },
+  { keywords: ['Inflation', 'CPI'], slug: 'inflation-rate' },
+  { keywords: ['GDP'], slug: 'gdp-growth' },
+  { keywords: ['Unemployment', 'Job'], slug: 'unemployment-rate' },
+  { keywords: ['Retail Sales'], slug: 'retail-sales' },
+  { keywords: ['PMI', 'Manufacturing'], slug: 'manufacturing-pmi' },
+  { keywords: ['Services'], slug: 'services-pmi' },
+  { keywords: ['Trade Balance'], slug: 'balance-of-trade' },
+  { keywords: ['Consumer Confidence', 'Sentiment'], slug: 'consumer-confidence' },
+  { keywords: ['Building Permits', 'Housing'], slug: 'building-permits' },
+  { keywords: ['Producer Prices', 'PPI'], slug: 'producer-prices' },
+];
+
+function getTradingEconomicsLink(currency, title) {
+  const countrySlug = COUNTRY_MAP[currency];
+  if (!countrySlug) return null;
+
+  const indicator = INDICATOR_MAP.find(ind => 
+    ind.keywords.some(k => title.toLowerCase().includes(k.toLowerCase()))
+  );
+
+  if (indicator) {
+    return `https://tradingeconomics.com/${countrySlug}/${indicator.slug}`;
+  }
+  
+  // No generic search fallback to keep it clean (only show button if valid indicator)
+  return null;
+}
+
 /**
  * Create an HTML email template for the FX newsletter
  * @param {object} article - Original article data
@@ -39,10 +81,14 @@ function createNewsletterHTML(article, summary) {
             <ul style="margin: 0; padding: 0; list-style: none;">
               ${data.events.map(event => {
                 const time = event.date ? new Date(event.date).toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'}) : '';
-                const impactColor = event.impact === 'High' ? '#ef4444' : '#f59e0b';
                 const impactIcon = event.impact === 'High' ? '🔴' : '🟠';
-                // Link to ForexFactory calendar for that day to see graphs
-                const eventLink = `https://www.forexfactory.com/calendar?day=${new Date().toISOString().split('T')[0]}`;
+                
+                // Smart Link Generation
+                const teLink = getTradingEconomicsLink(code, event.title);
+                const buttonHtml = teLink ? `
+                  <a href="${teLink}" style="font-size: 11px; color: #3b82f6; text-decoration: none; border: 1px solid #3b82f6; padding: 2px 6px; border-radius: 4px; white-space: nowrap;">
+                    📊 Graph
+                  </a>` : '';
                 
                 return `
                 <li style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; font-size: 13px; padding-bottom: 8px; border-bottom: 1px solid #f1f5f9;">
@@ -51,9 +97,7 @@ function createNewsletterHTML(article, summary) {
                     <span style="font-size: 10px; margin-right: 8px;">${impactIcon}</span>
                     <span style="color: #334155; font-weight: 500;">${event.title}</span>
                   </div>
-                  <a href="${eventLink}" style="font-size: 11px; color: #3b82f6; text-decoration: none; border: 1px solid #3b82f6; padding: 2px 6px; border-radius: 4px; white-space: nowrap;">
-                    📊 Graph
-                  </a>
+                  ${buttonHtml}
                 </li>
                 `;
               }).join('')}
@@ -78,7 +122,7 @@ function createNewsletterHTML(article, summary) {
                 </div>
               </div>
               
-              <p style="color: #334155; margin: 0 0 12px 0; font-size: 15px; line-height: 1.6; text-align: justify;">
+              <p style="color: #334155; margin: 0 0 12px 0; font-size: 15px; line-height: 1.8; text-align: left;">
                 ${data.summary}
               </p>
 

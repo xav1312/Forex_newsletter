@@ -80,31 +80,34 @@ async function summarizeWithGroq(article, options = {}) {
     ? mentionedCurrencies.map(c => `${c} (${CURRENCY_NAMES[c]})`).join(', ')
     : 'Aucune devise spécifique détectée';
 
-  const prompt = `Tu es un Stratège Macro FX Senior. Tu t'adresses à des investisseurs professionnels.
+  const prompt = `Tu es un Stratège Macro FX Senior. Tu t'adresses à des gérants de fonds et traders professionnels.
 
 ARTICLE SOURCE (ING FX Daily):
 Titre: ${article.title}
-Contenu: ${article.content.substring(0, 20000)}
+Contenu: ${article.content.substring(0, 25000)}
 
-INSTRUCTIONS STRICTES :
-1. Ton rôle est purement FONDAMENTAL (Macro-économie, Banques Centrales, Géopolitique).
-2. Ne donne AUCUN niveau technique (support/résistance) sauf s'il est explicitement cité dans le texte.
-3. Ne jamais inventer d'information. Base-toi uniquement sur l'article.
-4. Synthétise les drivers principaux (pourquoi la devise bouge ?).
+INSTRUCTIONS :
+1. Ton objectif est de fournir une ANALYSE FONDAMENTALE DÉTAILLÉE et DENSE.
+2. Pour chaque devise, ne fais pas juste un résumé. EXPLIQUE le "Pourquoi" en profondeur :
+   - Quels chiffres économiques précis ont influencé le cours ?
+   - Quel est l'impact sur les taux (Yields) ?
+   - Quelles sont les implications politiques ou banque centrale ?
+3. Rédige environ 80 à 100 mots par devise. Sois précis et technique (macro).
+4. Ne donne pas de niveaux techniques inventés, reste sur les fondamentaux.
 
 FORMAT DE RÉPONSE (JSON pur):
 {
-  "title": "Titre en Français (Fidèle à l'original)",
-  "introduction": "Contexte macro global résumé en 2 phrases (Risk-On/Off, narratif principal)",
+  "title": "Titre en Français (Professionnel)",
+  "introduction": "Contexte macro global (3-4 phrases sur le sentiment de marché, Risk-On/Off, Dollar Index, Taux US...)",
   "currencies": {
     "CODE_DEVISE": {
       "sentiment": "haussier" | "baissier" | "neutre",
       "emoji": "📈" | "📉" | "➡️",
-      "summary": "Analyse fondamentale précise (Moteurs du mouvement : taux, data, discours BC).",
-      "factors": ["Driver 1 (ex: Inflation US)", "Driver 2 (ex: BCE dovish)"]
+      "summary": "Analyse approfondie (minimum 5 phrases). Décris la mécanique du mouvement (ex: Data -> Taux -> FX). Cite les chiffres clés de l'article.",
+      "factors": ["Driver Macro 1", "Driver Macro 2"]
     }
   },
-  "keyTakeaway": "L'idée macro dominante de l'article."
+  "keyTakeaway": "L'insight macro le plus important de la journée pour un trader."
 }
 
 IMPORTANT: Réponds UNIQUEMENT avec le JSON valide.`;
@@ -181,7 +184,7 @@ function simpleSummary(article) {
         sentiment: 'neutre',
         emoji: '➡️',
         summary: currencyMentions.join('. ') + '.',
-        factors: ['Analyse complète requiert API Gemini'],
+        factors: ['Analyse complète requiert API IA'],
       };
     }
   }
@@ -190,7 +193,7 @@ function simpleSummary(article) {
     title: article.title,
     introduction: introduction,
     currencies: currencies,
-    conclusion: 'Pour un résumé détaillé en français, configurez votre clé API Gemini.',
+    conclusion: 'Pour un résumé détaillé en français, configurez votre clé API IA.',
     keyTakeaway: 'Résumé automatique - traduction non disponible sans API.',
     mentionedCurrencies: mentionedCurrencies,
   };

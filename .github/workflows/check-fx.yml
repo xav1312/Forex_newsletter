@@ -5,6 +5,8 @@ on:
     # Schedule: Every 15 minutes, from 08:00 to 20:00 UTC (Mon-Fri)
     # Refreshed on: 2026-01-26 to fix missing runs
     - cron: "*/15 8-20 * * 1-5"
+  push: # DEBUG: Trigger on push to verify workflow is enabled
+    branches: ["main"]
   workflow_dispatch: # Permet de lancer manuellement depuis l'interface GitHub
     inputs:
       force_run:

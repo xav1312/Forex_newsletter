@@ -2,7 +2,8 @@ name: Check for New FX Daily
 
 on:
   schedule:
-    # Toutes les 15 minutes, de 8h à 20h UTC (9h-21h France), du lundi au vendredi
+    # Schedule: Every 15 minutes, from 08:00 to 20:00 UTC (Mon-Fri)
+    # Refreshed on: 2026-01-26 to fix missing runs
     - cron: "*/15 8-20 * * 1-5"
   workflow_dispatch: # Permet de lancer manuellement depuis l'interface GitHub
     inputs:

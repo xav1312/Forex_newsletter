@@ -41,23 +41,18 @@ async function getLatestArticle() {
       // Skip empty links or navigation links
       if (!href || !text || text.length < 10) continue;
       
-      // Prioritize FX Daily articles (they are the main daily analysis)
-      if (href.includes('fx-daily')) {
+      const title = extractTitle(link);
+      const lowHref = href.toLowerCase();
+      const lowTitle = title.toLowerCase();
+
+      // STRICT FILTER: Only FX Daily articles
+      if (lowHref.includes('fx-daily') || lowTitle.includes('fx daily')) {
         latestArticle = {
           url: href.startsWith('http') ? href : ING_BASE_URL + href,
-          title: extractTitle(link),
+          title: title,
           description: extractDescription(link),
         };
-        break; // FX Daily is the priority
-      }
-      
-      // Otherwise take the first valid article
-      if (!latestArticle) {
-        latestArticle = {
-          url: href.startsWith('http') ? href : ING_BASE_URL + href,
-          title: extractTitle(link),
-          description: extractDescription(link),
-        };
+        break; // Take the latest one found
       }
     }
 
@@ -136,20 +131,26 @@ async function getRecentArticles(count = 5) {
       if (articles.length >= count) break;
       
       const href = link.getAttribute('href');
-      const fullUrl = href?.startsWith('http') ? href : ING_BASE_URL + href;
-      
-      // Skip duplicates
-      if (!href || seenUrls.has(fullUrl)) continue;
-      seenUrls.add(fullUrl);
-      
+      const text = link.textContent?.trim();
+      if (!href || !text || text.length < 10) continue;
+
       const title = extractTitle(link);
-      if (!title || title.length < 10) continue;
-      
-      articles.push({
-        url: fullUrl,
-        title: title,
-        description: extractDescription(link),
-      });
+      const lowHref = href.toLowerCase();
+      const lowTitle = title.toLowerCase();
+      const fullUrl = href.startsWith('http') ? href : ING_BASE_URL + href;
+
+      // STRICT FILTER: Only FX Daily articles
+      if (lowHref.includes('fx-daily') || lowTitle.includes('fx daily')) {
+        // Skip duplicates
+        if (seenUrls.has(fullUrl)) continue;
+        seenUrls.add(fullUrl);
+        
+        articles.push({
+          url: fullUrl,
+          title: title,
+          description: extractDescription(link),
+        });
+      }
     }
 
     console.log(`✅ Found ${articles.length} articles`);

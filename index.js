@@ -1,7 +1,7 @@
 require('dotenv').config();
 
 const { scrapeArticle } = require('./src/scraper');
-const { summarizeWithGemini, simpleSummary } = require('./src/summarizer');
+const { summarizeWithGemini, summarizeWithGroq, simpleSummary } = require('./src/summarizer');
 const { sendNewsletter, previewNewsletter } = require('./src/emailer');
 const { getLatestArticle, getRecentArticles } = require('./src/sources/ing-think');
 const { getEventsForCurrencies } = require('./src/economics');

@@ -1,18 +1,19 @@
 const axios = require('axios');
 
 // Currencies to track
-const TRACKED_CURRENCIES = ['USD', 'EUR', 'GBP', 'NZD', 'AUD', 'JPY', 'CAD', 'CHF', 'CNY'];
+// Currencies to track (G10 + Whitelist)
+const TRACKED_CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY', 'CAD', 'CHF', 'AUD', 'NZD', 'CNY'];
 
 // Currency display names in French
 const CURRENCY_NAMES = {
   USD: 'Dollar américain',
   EUR: 'Euro',
   GBP: 'Livre sterling',
-  NZD: 'Dollar néo-zélandais',
-  AUD: 'Dollar australien',
   JPY: 'Yen japonais',
   CAD: 'Dollar canadien',
   CHF: 'Franc suisse',
+  AUD: 'Dollar australien',
+  NZD: 'Dollar néo-zélandais',
   CNY: 'Yuan chinois',
 };
 
@@ -93,7 +94,8 @@ INSTRUCTIONS :
    - Quel est l'impact sur les taux (Yields) ?
    - Quelles sont les implications politiques ou banque centrale ?
 3. Rédige environ 80 à 100 mots par devise. Sois précis et technique (macro).
-4. Ne donne pas de niveaux techniques inventés, reste sur les fondamentaux.
+4. **IMPORTANT: FIDÉLITÉ À LA SOURCE**. Si l'article d'ING montre une flèche vers le haut (bullish) ou vers le bas (bearish) ou utilise des termes comme "Hawkish" ou "Dovish", ton sentiment DOIT correspondre. Ne sois pas "neutre" si la source est directionnelle.
+5. **RESTRICTION**: Ne résume QUE les devises suivantes : ${mentionedCurrencies.join(', ')}. Ignore totalement les autres (comme HUF, CZK, etc.) même si elles sont dans l'article.
 
 FORMAT DE RÉPONSE (JSON pur):
 {
@@ -107,6 +109,7 @@ FORMAT DE RÉPONSE (JSON pur):
       "factors": ["Driver Macro 1", "Driver Macro 2"]
     }
   },
+  "conclusion": "Synthèse finale sur la direction probable des marchés pour la session à venir (2-3 phrases).",
   "keyTakeaway": "L'insight macro le plus important de la journée pour un trader."
 }
 

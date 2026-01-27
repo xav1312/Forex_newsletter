@@ -23,34 +23,23 @@ const CURRENCY_NAMES = {
  * @returns {string[]} Array of mentioned currency codes
  */
 function detectCurrencies(content) {
-  const upperContent = content.toUpperCase();
   const mentioned = [];
   
-  // Also check for currency pairs like EUR/USD, EURUSD
-  const currencyPatterns = TRACKED_CURRENCIES.flatMap(c => [
-    c,
-    c.toLowerCase(),
-    // Common pair patterns
-    ...TRACKED_CURRENCIES.filter(c2 => c2 !== c).map(c2 => `${c}/${c2}`),
-    ...TRACKED_CURRENCIES.filter(c2 => c2 !== c).map(c2 => `${c}${c2}`),
-  ]);
-
   for (const currency of TRACKED_CURRENCIES) {
-    // Check for the currency code
-    const regex = new RegExp(`\\b${currency}\\b`, 'gi');
-    if (regex.test(content)) {
-      mentioned.push(currency);
-      continue;
-    }
+    // Look for the ING header pattern: Code: Heading
+    // Example: "USD: Dollar licks its wounds" or "EUR: 1.19"
+    // We check for the code at the start of a line or after significant whitespace
+    const headerRegex = new RegExp(`(^|\\n)\\s*\\b${currency}\\b\\s*:`, 'i');
+    const isInHeading = headerRegex.test(content);
     
-    // Check for currency in pairs (e.g., EUR/USD mentions both EUR and USD)
-    for (const other of TRACKED_CURRENCIES) {
-      if (other === currency) continue;
-      const pairRegex = new RegExp(`\\b(${currency}[/]?${other}|${other}[/]?${currency})\\b`, 'gi');
-      if (pairRegex.test(content) && !mentioned.includes(currency)) {
-        mentioned.push(currency);
-        break;
-      }
+    // Fallback: If not a heading, it must be mentioned frequently (at least 3-4 times)
+    // to be considered a "main topic".
+    const occurrenceRegex = new RegExp(`\\b${currency}\\b`, 'gi');
+    const matches = content.match(occurrenceRegex);
+    const frequentMention = matches && matches.length >= 4;
+    
+    if (isInHeading || frequentMention) {
+      mentioned.push(currency);
     }
   }
 
@@ -75,45 +64,40 @@ async function summarizeWithGroq(article, options = {}) {
 
   // Detect mentioned currencies
   const mentionedCurrencies = detectCurrencies(article.content);
-  console.log(`   Currencies detected: ${mentionedCurrencies.join(', ') || 'none'}`);
+  console.log(`   Currencies detected for analysis: ${mentionedCurrencies.join(', ') || 'none'}`);
 
-  const currencyList = mentionedCurrencies.length > 0 
-    ? mentionedCurrencies.map(c => `${c} (${CURRENCY_NAMES[c]})`).join(', ')
-    : 'Aucune devise spécifique détectée';
+  const prompt = `Tu es un Stratège Macro FX Senior chez ING. Ta mission est de résumer l'analyse "FX Daily" pour des clients institutionnels.
 
-  const prompt = `Tu es un Stratège Macro FX Senior. Tu t'adresses à des gérants de fonds et traders professionnels.
-
-ARTICLE SOURCE (ING FX Daily):
+ARTICLE SOURCE :
 Titre: ${article.title}
 Contenu: ${article.content.substring(0, 25000)}
 
-INSTRUCTIONS :
-1. Ton objectif est de fournir une ANALYSE FONDAMENTALE DÉTAILLÉE et DENSE.
-2. Pour chaque devise, ne fais pas juste un résumé. EXPLIQUE le "Pourquoi" en profondeur :
-   - Quels chiffres économiques précis ont influencé le cours ?
-   - Quel est l'impact sur les taux (Yields) ?
-   - Quelles sont les implications politiques ou banque centrale ?
-3. Rédige environ 80 à 100 mots par devise. Sois précis et technique (macro).
-4. **IMPORTANT: FIDÉLITÉ À LA SOURCE**. Si l'article d'ING montre une flèche vers le haut (bullish) ou vers le bas (bearish) ou utilise des termes comme "Hawkish" ou "Dovish", ton sentiment DOIT correspondre. Ne sois pas "neutre" si la source est directionnelle.
-5. **RESTRICTION**: Ne résume QUE les devises suivantes : ${mentionedCurrencies.join(', ')}. Ignore totalement les autres (comme HUF, CZK, etc.) même si elles sont dans l'article.
+INSTRUCTIONS CRITIQUES :
+1. **FIDÉLITÉ ABSOLUE AU SENTIMENT** : 
+   - Observe les titres de sections (ex: "EUR: 1.19 could be the range high") et les cibles numériques.
+   - Si l'article dit qu'une paire va plafonner ou baisser à la fin du trimestre (ex: vers 1.17), le sentiment est **BAISSIER** ou **NEUTRE**, même si le marché est actuellement "bid".
+   - Ne confonds pas le mouvement actuel (momentum) avec l'ANALYSE du stratège. Ton résumé doit refléter l'OPINION du stratège.
+2. **RESTRICTION DE DEVISES** : Ne génère de sections QUE pour : ${mentionedCurrencies.join(', ')}.
+3. **TONALITÉ** : Professionnelle, macro-économique, précise. Cite les chiffres clés (niveaux techniques, dates, indicateurs).
+4. **CONTENU** : Environ 80 mots par devise. Explique la logique (ex: Data US -> Taux -> Impact Dollar).
 
 FORMAT DE RÉPONSE (JSON pur):
 {
-  "title": "Titre en Français (Professionnel)",
-  "introduction": "Contexte macro global (3-4 phrases sur le sentiment de marché, Risk-On/Off, Dollar Index, Taux US...)",
+  "title": "Titre pro en Français",
+  "introduction": "Contexte macro global (3-4 phrases).",
   "currencies": {
-    "CODE_DEVISE": {
+    "CODE": {
       "sentiment": "haussier" | "baissier" | "neutre",
       "emoji": "📈" | "📉" | "➡️",
-      "summary": "Analyse approfondie (minimum 5 phrases). Décris la mécanique du mouvement (ex: Data -> Taux -> FX). Cite les chiffres clés de l'article.",
-      "factors": ["Driver Macro 1", "Driver Macro 2"]
+      "summary": "Analyse détaillée (min 5 phrases). Doit correspondre EXACTEMENT à l'opinion de la source.",
+      "factors": ["Facteur 1", "Facteur 2"]
     }
   },
-  "conclusion": "Synthèse finale sur la direction probable des marchés pour la session à venir (2-3 phrases).",
-  "keyTakeaway": "L'insight macro le plus important de la journée pour un trader."
+  "conclusion": "Direction probable des prochaines sessions.",
+  "keyTakeaway": "L'insight le plus important pour un trader."
 }
 
-IMPORTANT: Réponds UNIQUEMENT avec le JSON valide.`;
+IMPORTANT: Réponds UNIQUEMENT avec le JSON.`;
 
   try {
     console.log(`🤖 Generating French summary with Groq (Llama 3)...`);

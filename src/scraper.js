@@ -25,9 +25,25 @@ async function scrapeArticle(url) {
 
     // Parse with JSDOM
     const dom = new JSDOM(response.data, { url });
+    const document = dom.window.document;
+
+    // PRE-PROCESSING: Find ING sentiment arrows and replace them with text markers
+    // This allows Readability to preserve the sentiment even after stripping icons.
+    const sentimentIcons = document.querySelectorAll('.prefix i.fa-solid');
+    sentimentIcons.forEach(icon => {
+      let sentimentText = '';
+      if (icon.classList.contains('fa-circle-arrow-up')) sentimentText = ' [SENTIMENT: HAUSSIER] ';
+      else if (icon.classList.contains('fa-circle-arrow-down')) sentimentText = ' [SENTIMENT: BAISSIER] ';
+      else if (icon.classList.contains('fa-circle-arrow-right')) sentimentText = ' [SENTIMENT: NEUTRE] ';
+      
+      if (sentimentText) {
+        const textNode = document.createTextNode(sentimentText);
+        icon.parentNode.insertBefore(textNode, icon.nextSibling);
+      }
+    });
 
     // Extract readable content with Readability
-    const reader = new Readability(dom.window.document);
+    const reader = new Readability(document);
     const article = reader.parse();
 
     if (!article) {

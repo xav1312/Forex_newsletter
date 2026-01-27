@@ -74,14 +74,13 @@ Contenu: ${article.content.substring(0, 25000)}
 
 INSTRUCTIONS CRITIQUES :
 1. **FIDÉLITÉ ABSOLUE AU SENTIMENT** : 
-   - Observe les titres de sections et les flèches directionnelles (ex: ↑ USD: Dollar licks its wounds).
-   - Identifie les cibles numériques et le langage directionnel : 
-      * "work its way higher", "fill gaps higher", "targets 97.42" -> **HAUSSIER**
-      * "range high", "capped at", "drifting lower", "targets 1.17" -> **BAISSIER**
-   - Ne confonds pas le mouvement actuel (momentum) avec l'ANALYSE du stratège. Ton résumé doit refléter l'OPINION du stratège.
+   - L'article contient des marqueurs explicites comme **[SENTIMENT: HAUSSIER]**, **[SENTIMENT: BAISSIER]** ou **[SENTIMENT: NEUTRE]**.
+   - Ces marqueurs sont la SOURCE DE VÉRITÉ ABSOLUE. Tu DOIS les utiliser pour définir le sentiment de la section correspondante.
+   - Si un tel marqueur est présent au début d'une section, ignore toute autre contradiction textuelle et utilise-le.
+   - En l'absence de marqueur, identifie les cibles numériques et le langage directionnel ("work its way higher" -> haussier, "targets 1.17" -> baissier).
 2. **RESTRICTION DE DEVISES** : Ne génère de sections QUE pour : ${mentionedCurrencies.join(', ')}.
-3. **TONALITÉ** : Professionnelle, macro-économique, précise. Cite les chiffres clés (niveaux techniques, dates, indicateurs).
-4. **CONTENU** : Environ 80 mots par devise. Explique la logique.
+3. **TONALITÉ** : Professionnelle, macro-économique, précise. Cite les chiffres clés.
+4. **CONTENU** : Environ 80 mots par devise. Explique la logique macro.
 
 FORMAT DE RÉPONSE (JSON pur):
 {

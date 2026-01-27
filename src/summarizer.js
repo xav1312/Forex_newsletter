@@ -74,12 +74,14 @@ Contenu: ${article.content.substring(0, 25000)}
 
 INSTRUCTIONS CRITIQUES :
 1. **FIDÉLITÉ ABSOLUE AU SENTIMENT** : 
-   - Observe les titres de sections (ex: "EUR: 1.19 could be the range high") et les cibles numériques.
-   - Si l'article dit qu'une paire va plafonner ou baisser à la fin du trimestre (ex: vers 1.17), le sentiment est **BAISSIER** ou **NEUTRE**, même si le marché est actuellement "bid".
+   - Observe les titres de sections et les flèches directionnelles (ex: ↑ USD: Dollar licks its wounds).
+   - Identifie les cibles numériques et le langage directionnel : 
+      * "work its way higher", "fill gaps higher", "targets 97.42" -> **HAUSSIER**
+      * "range high", "capped at", "drifting lower", "targets 1.17" -> **BAISSIER**
    - Ne confonds pas le mouvement actuel (momentum) avec l'ANALYSE du stratège. Ton résumé doit refléter l'OPINION du stratège.
 2. **RESTRICTION DE DEVISES** : Ne génère de sections QUE pour : ${mentionedCurrencies.join(', ')}.
 3. **TONALITÉ** : Professionnelle, macro-économique, précise. Cite les chiffres clés (niveaux techniques, dates, indicateurs).
-4. **CONTENU** : Environ 80 mots par devise. Explique la logique (ex: Data US -> Taux -> Impact Dollar).
+4. **CONTENU** : Environ 80 mots par devise. Explique la logique.
 
 FORMAT DE RÉPONSE (JSON pur):
 {

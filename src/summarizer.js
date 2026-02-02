@@ -66,7 +66,37 @@ async function summarizeWithGroq(article, options = {}) {
   const mentionedCurrencies = detectCurrencies(article.content);
   console.log(`   Currencies detected for analysis: ${mentionedCurrencies.join(', ') || 'none'}`);
 
-  const prompt = `Tu es un Stratège Macro FX Senior chez ING. Ta mission est de résumer l'analyse "FX Daily" pour des clients institutionnels.
+  // Select prompt based on source type
+  let prompt;
+  
+  if (options.sourceType === 'general_news') {
+    console.log('   ℹ️ Using GENERAL NEWS prompt');
+    prompt = `Tu es un analyste économique senior. Ta mission est de résumer cette actualité pour des traders.
+
+ARTICLE SOURCE :
+Titre: ${article.title}
+Contenu: ${article.content.substring(0, 15000)}
+
+INSTRUCTIONS :
+1. Résume l'événement principal en 3-4 phrases percutantes.
+2. Identifie l'impact probable sur les marchés (Devises, Matières Premières, Actions).
+3. Adapte le ton : Professionnel, factuel, direct.
+
+FORMAT DE RÉPONSE (JSON pur):
+{
+  "title": "Titre pro en Français",
+  "introduction": "Le fait marquant (Summary)",
+  "currencies": {}, 
+  "keyTakeaway": "L'impact majeur à retenir (1 phrase)",
+  "conclusion": "Analyse d'impact (Bullish/Bearish pour quels actifs ?)"
+}
+
+IMPORTANT: Réponds UNIQUEMENT avec le JSON.`;
+
+  } else {
+    // Default: FX Daily breakdown (ING style)
+    console.log('   ℹ️ Using FX DAILY breakdown prompt');
+    prompt = `Tu es un Stratège Macro FX Senior chez ING. Ta mission est de résumer l'analyse "FX Daily" pour des clients institutionnels.
 
 ARTICLE SOURCE :
 Titre: ${article.title}
@@ -99,6 +129,7 @@ FORMAT DE RÉPONSE (JSON pur):
 }
 
 IMPORTANT: Réponds UNIQUEMENT avec le JSON.`;
+  }
 
   try {
     console.log(`🤖 Generating French summary with Groq (Llama 3)...`);

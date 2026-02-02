@@ -40,12 +40,20 @@ async function sendNewsletter(analysis, articleUrl) {
   let message = `<b>${analysis.title}</b>\n\n`;
   message += `<i>${analysis.introduction}</i>\n\n`;
 
-  // 2. Iterate over currencies
-  if (analysis.currencies) {
+  // 2. Iterate over currencies (if available and valid)
+  if (analysis.currencies && Object.keys(analysis.currencies).length > 0) {
     for (const [code, data] of Object.entries(analysis.currencies)) {
-      message += `${data.emoji} <b>${code}</b> (${data.sentiment.toUpperCase()})\n`;
-      message += `${data.summary}\n\n`;
+      // Check if data has the expected structure (for FX Daily)
+      if (data && data.sentiment) {
+        const emoji = data.emoji || '➡️';
+        const sentiment = data.sentiment ? data.sentiment.toUpperCase() : 'NEUTRE';
+        message += `${emoji} <b>${code}</b> (${sentiment})\n`;
+        message += `${data.summary || 'Pas de détails.'}\n\n`;
+      }
     }
+  } else if (analysis.conclusion) {
+      // If no specific currencies, show the main analysis/conclusion
+      message += `<b>Analyse :</b>\n${analysis.conclusion}\n\n`;
   }
 
   // 3. Conclusion & Takeaway

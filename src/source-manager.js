@@ -5,8 +5,7 @@
 
 const ADAPTERS = {
   'ing': require('./adapters/ing'),
-  // Future adapters can be added here
-  // 'reuters': require('./adapters/reuters'),
+  'investing': require('./adapters/investing'),
 };
 
 /**

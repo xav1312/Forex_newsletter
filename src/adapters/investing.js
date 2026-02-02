@@ -77,5 +77,6 @@ async function fetchLatest() {
 module.exports = {
   id: 'investing',
   name: 'InvestingLive Feed',
+  type: 'general_news', // Signals that this is general economic news
   fetchLatest
 };

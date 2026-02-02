@@ -28,8 +28,8 @@ async function processSource(sourceId = 'ing', options = {}) {
     const latestArticle = await source.fetchLatest();
     console.log(`\n📰 Latest article found: "${latestArticle.title}"\n`);
     
-    // Process it
-    return await processArticle(latestArticle.url, options);
+    // Process it (passing source type for context-aware summarization)
+    return await processArticle(latestArticle.url, { ...options, sourceType: source.type });
   } catch (error) {
     console.error(`\n❌ Error fetching from source ${sourceId}:`, error.message);
     throw error;
@@ -67,7 +67,7 @@ async function processArticle(url, options = {}) {
     
     if (useAI && process.env.GROQ_API_KEY) {
       try {
-        summary = await summarizeWithGroq(article);
+        summary = await summarizeWithGroq(article, { sourceType: options.sourceType });
       } catch (error) {
         console.error('   ❌ Groq AI failed:', error.message);
         summary = simpleSummary(article);

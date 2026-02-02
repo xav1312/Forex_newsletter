@@ -98,5 +98,6 @@ function extractDescription(linkElement) {
 module.exports = {
   id: 'ing',
   name: 'ING Think FX',
+  type: 'fx_daily', // Signals that this is a detailed currency breakdown
   fetchLatest
 };

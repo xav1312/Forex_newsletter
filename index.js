@@ -3,11 +3,38 @@ require('dotenv').config();
 const { scrapeArticle } = require('./src/scraper');
 const { summarizeWithGemini, summarizeWithGroq, simpleSummary } = require('./src/summarizer');
 const { sendNewsletter, previewNewsletter } = require('./src/emailer');
-const { getLatestArticle, getRecentArticles } = require('./src/sources/ing-think');
 const { getEventsForCurrencies } = require('./src/economics');
 const { checkForNewArticle, startWatcher } = require('./src/watcher');
+const sourceManager = require('./src/source-manager');
 const fs = require('fs');
 const path = require('path');
+
+// ... (existing processArticle function remains unchanged) ...
+
+/**
+ * Automatically fetch and process the latest article from a specific source
+ * @param {string} sourceId - The source adapter ID (default: 'ing')
+ * @param {object} options - Processing options
+ */
+async function processSource(sourceId = 'ing', options = {}) {
+  try {
+    const source = sourceManager.getSource(sourceId);
+    
+    console.log('\n' + '='.repeat(60));
+    console.log(`🏦 SOURCE: ${source.name.toUpperCase()} - AUTO FETCH`);
+    console.log('='.repeat(60) + '\n');
+
+    // Get the latest article URL using the adapter
+    const latestArticle = await source.fetchLatest();
+    console.log(`\n📰 Latest article found: "${latestArticle.title}"\n`);
+    
+    // Process it
+    return await processArticle(latestArticle.url, options);
+  } catch (error) {
+    console.error(`\n❌ Error fetching from source ${sourceId}:`, error.message);
+    throw error;
+  }
+}
 
 /**
  * Main function to process an article into a newsletter
@@ -121,27 +148,6 @@ async function processArticle(url, options = {}) {
   }
 }
 
-/**
- * Automatically fetch and process the latest ING Think FX article
- * @param {object} options - Processing options
- */
-async function processLatestING(options = {}) {
-  console.log('\n' + '='.repeat(60));
-  console.log('🏦 ING THINK FX - AUTO FETCH');
-  console.log('='.repeat(60) + '\n');
-
-  try {
-    // Get the latest article URL
-    const latestArticle = await getLatestArticle();
-    console.log(`\n📰 Latest article found: "${latestArticle.title}"\n`);
-    
-    // Process it
-    return await processArticle(latestArticle.url, options);
-  } catch (error) {
-    console.error('\n❌ Error fetching ING Think:', error.message);
-    throw error;
-  }
-}
 
 // CLI usage
 if (require.main === module) {
@@ -200,8 +206,16 @@ ENVIRONMENT VARIABLES (in .env file):
     const force = process.argv.includes('--force');
     processPromise = checkForNewArticle({ forceProcess: force });
   } else if (command === 'ing') {
-    // Auto-fetch latest ING Think FX article
-    processPromise = processLatestING({ sendEmail });
+    // Auto-fetch latest ING Think FX article (Legacy Alias)
+    processPromise = processSource('ing', { sendEmail });
+  } else if (!command.startsWith('http') && !command.startsWith('-')) {
+    // Try to use command as a source ID (e.g., 'reuters')
+    try {
+        processPromise = processSource(command, { sendEmail });
+    } catch (e) {
+        console.error(`❌ Unknown command or source: ${command}`);
+        process.exit(1);
+    }
   } else if (command.startsWith('http')) {
     // Process specific URL
     processPromise = processArticle(command, { sendEmail });
@@ -218,9 +232,7 @@ ENVIRONMENT VARIABLES (in .env file):
 
 module.exports = { 
   processArticle, 
-  processLatestING, 
-  getLatestArticle, 
-  getRecentArticles,
+  processSource,
   checkForNewArticle,
   startWatcher,
 };

@@ -1,0 +1,59 @@
+const axios = require('axios');
+
+/**
+ * Send a simple text message to the configured Telegram chat
+ * @param {string} text - The message to send
+ * @returns {Promise<void>}
+ */
+async function sendMessage(text) {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  const chatId = process.env.TELEGRAM_CHAT_ID;
+
+  if (!token || !chatId) {
+    console.warn('⚠️ Telegram not configured (missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID). Skipping.');
+    return;
+  }
+
+  try {
+    const url = `https://api.telegram.org/bot${token}/sendMessage`;
+    await axios.post(url, {
+      chat_id: chatId,
+      text: text,
+      parse_mode: 'HTML', // Allows bolding, links, etc.
+      disable_web_page_preview: true
+    });
+    console.log('✅ Telegram message sent successfully.');
+  } catch (error) {
+    console.error('❌ Error sending Telegram message:', error.response?.data || error.message);
+  }
+}
+
+/**
+ * Format and send the full newsletter to Telegram
+ * @param {object} analysis - The AI generated analysis JSON
+ * @param {string} articleUrl - Original link
+ */
+async function sendNewsletter(analysis, articleUrl) {
+  if (!analysis) return;
+
+  // 1. Header with Title
+  let message = `<b>${analysis.title}</b>\n\n`;
+  message += `<i>${analysis.introduction}</i>\n\n`;
+
+  // 2. Iterate over currencies
+  if (analysis.currencies) {
+    for (const [code, data] of Object.entries(analysis.currencies)) {
+      message += `${data.emoji} <b>${code}</b> (${data.sentiment.toUpperCase()})\n`;
+      message += `${data.summary}\n\n`;
+    }
+  }
+
+  // 3. Conclusion & Takeaway
+  message += `💡 <b>Key Takeaway:</b> ${analysis.keyTakeaway}\n\n`;
+  message += `🔗 <a href="${articleUrl}">Lire l'article original</a>`;
+
+  // Send the formatted message
+  await sendMessage(message);
+}
+
+module.exports = { sendMessage, sendNewsletter };

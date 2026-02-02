@@ -100,6 +100,15 @@ async function processArticle(url, options = {}) {
       console.log('   ⚠️  No recipient email configured. Set RECIPIENT_EMAIL in .env\n');
     }
 
+    // Step 5: Send Telegram (New!)
+    const telegram = require('./src/telegram');
+    console.log('📱 Sending to Telegram...');
+    try {
+        await telegram.sendNewsletter(summary, article.url);
+    } catch (err) {
+        console.error('   ⚠️ Failed to send Telegram: ' + err.message);
+    }
+
     console.log('='.repeat(60));
     console.log('✨ DONE! Newsletter generated successfully.');
     console.log('='.repeat(60) + '\n');

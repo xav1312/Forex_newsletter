@@ -54,6 +54,6 @@ jobs:
           if git diff --staged --quiet; then
             echo "No changes to .watcher-state.json to commit."
           else
-            git commit -m "Update last processed article state"
+            git commit -m "Update last processed article state [skip ci]"
             git push
           fi

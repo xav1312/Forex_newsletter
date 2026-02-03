@@ -58,6 +58,7 @@ async function scrapeArticle(url) {
       excerpt: article.excerpt || "",
       byline: article.byline || "",
       siteName: article.siteName || new URL(url).hostname,
+      publishedTime: article.publishedTime || null,
       url: url,
     };
   } catch (error) {

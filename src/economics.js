@@ -7,7 +7,12 @@ const FF_XML_URL = 'https://nfs.faireconomy.media/ff_calendar_thisweek.xml';
  * Fetch and parse ForexFactory economic calendar
  * @returns {Promise<Array<{title: string, country: string, date: Date, impact: string, forecast: string, previous: string}>>}
  */
-async function getEconomicEvents() {
+/**
+ * Fetch and parse ForexFactory economic calendar
+ * @param {Date|string} targetDate - Optional date to filter events for (defaults to Now)
+ * @returns {Promise<Array<object>>}
+ */
+async function getEconomicEvents(targetDate) {
   try {
     console.log(`📅 Fetching ForexFactory calendar...`);
     const response = await axios.get(FF_XML_URL, {
@@ -23,11 +28,17 @@ async function getEconomicEvents() {
     const events = [];
     const eventNodes = document.querySelectorAll('event');
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Use provided date or default to now
+    let refDate = targetDate ? new Date(targetDate) : new Date();
     
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    // Validate date
+    if (isNaN(refDate.getTime())) {
+        console.warn('⚠️ Invalid reference date provided, defaulting to Now.');
+        refDate = new Date();
+    }
+    
+    // Log the reference date for debugging
+    console.log(`   ℹ️ Filtering events for: ${refDate.toDateString()}`);
 
     eventNodes.forEach(node => {
       const dateStr = node.querySelector('date')?.textContent; // Format: 1-23-2026
@@ -38,7 +49,7 @@ async function getEconomicEvents() {
       // Parse date and time
       const [month, day, year] = dateStr.split('-');
       
-      // Determine time (12h format to 24h)
+      // Determine time
       const timeMatch = timeStr.match(/(\d+):(\d+)(am|pm)/i);
       let hours = 0;
       let minutes = 0;
@@ -56,20 +67,20 @@ async function getEconomicEvents() {
 
       const timezone = process.env.TIMEZONE || 'UTC';
       
-      // Get "Today" in the user's timezone as "M/D/YYYY" string
-      const todayString = new Date().toLocaleDateString('en-US', {
+      // Get "Today" relative to the reference date (Article Date) in the user's timezone
+      // We process events matching the Article's "Day"
+      const targetDateString = refDate.toLocaleDateString('en-US', {
         timeZone: timezone,
         year: 'numeric',
         month: 'numeric',
         day: 'numeric'
-      }); // e.g., "2/3/2026"
+      });
 
-      // Reconstruct event date string from XML match to match "M/D/YYYY"
-      // XML is "M-D-YYYY" (e.g. "2-3-2026")
+      // Reconstruct event date string from XML match
       const eventDateString = `${parseInt(month)}/${parseInt(day)}/${year}`;
 
-      // Strict comparison: Event must match Today's date in User's Timezone
-      if (todayString !== eventDateString) return;
+      // Strict comparison: Event must match the Target Date
+      if (targetDateString !== eventDateString) return;
 
       const impact = node.querySelector('impact')?.textContent || 'Low';
       const country = node.querySelector('country')?.textContent || '';
@@ -77,10 +88,10 @@ async function getEconomicEvents() {
 
       events.push({
         title,
-        country, // e.g. USD, EUR
-        currency: country, // ForexFactory uses country code as currency often (USD, EUR, GBP)
+        country, 
+        currency: country,
         date: eventDate,
-        impact, // High, Medium, Low
+        impact, 
         forecast: node.querySelector('forecast')?.textContent || '',
         previous: node.querySelector('previous')?.textContent || ''
       });
@@ -89,22 +100,23 @@ async function getEconomicEvents() {
     // Filter only High and Medium impact
     const importantEvents = events.filter(e => e.impact === 'High' || e.impact === 'Medium');
     
-    console.log(`✅ Found ${importantEvents.length} important events for today`);
+    console.log(`✅ Found ${importantEvents.length} important events for ${refDate.toDateString()}`);
     return importantEvents;
 
   } catch (error) {
     console.error(`❌ Error fetching calendar:`, error.message);
-    return []; // Return empty array on error to not break the flow
+    return [];
   }
 }
 
 /**
  * Get events formatted for specific currencies
- * @param {string[]} currencies - List of currency codes (USD, EUR...)
+ * @param {string[]} currencies - List of currency codes
+ * @param {Date|string} targetDate - Optional date to filter events for
  * @returns {Promise<Object>} Map of currency -> events array
  */
-async function getEventsForCurrencies(currencies) {
-  const allEvents = await getEconomicEvents();
+async function getEventsForCurrencies(currencies, targetDate) {
+  const allEvents = await getEconomicEvents(targetDate);
   const eventsByCurrency = {};
 
   // Initialize arrays

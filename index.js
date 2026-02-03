@@ -86,7 +86,8 @@ async function processArticle(url, options = {}) {
       const currencies = Object.keys(summary.currencies || {});
       if (currencies.length > 0) {
         console.log('📅 Step 2.5: Fetching economic calendar...');
-        const eventsByCurrency = await getEventsForCurrencies(currencies);
+        // Pass article publication date to match events to the ARTICLE'S day (not necessarily "today")
+        const eventsByCurrency = await getEventsForCurrencies(currencies, article.publishedTime);
         
         let eventCount = 0;
         for (const [currency, events] of Object.entries(eventsByCurrency)) {

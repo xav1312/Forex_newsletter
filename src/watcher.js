@@ -3,6 +3,10 @@ const path = require('path');
 const sourceManager = require('./source-manager');
 const userManager = require('./users');
 const history = require('./history');
+const { scrapeArticle } = require('./scraper');
+const { summarizeWithGroq, simpleSummary } = require('./summarizer');
+const { sendNewsletter, previewNewsletter } = require('./emailer');
+const { getEventsForCurrencies } = require('./economics');
 
 // State file to track last processed article per source
 const STATE_FILE = path.join(__dirname, '..', '.watcher-state.json');

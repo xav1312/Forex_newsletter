@@ -1,7 +1,4 @@
-const INGAdapter = require('./adapters/ing');
-const InvestingAdapter = require('./adapters/investing');
 const RSSAdapter = require('./adapters/rss');
-const InvestingLiveComAdapter = require('./adapters/investing-live-com');
 
 class SourceManager {
   constructor() {
@@ -10,19 +7,26 @@ class SourceManager {
   }
 
   registerDefaults() {
-    // ING Think FX
-    const ing = new INGAdapter('ing', 'ING Think FX');
+    // 1. ING Think FX (via RSS + Filter)
+    const ing = new RSSAdapter(
+      'ing', 
+      'ING Think FX', 
+      'https://think.ing.com/rss/all', 
+      'fx_daily',
+      (item) => item.title && item.title.toLowerCase().includes('fx daily')
+    );
     this.registerSource(ing);
 
-    // Investing.com Live (Blocked)
-    const investing = new InvestingAdapter('investing', 'Investing Live (Blocked)');
-    this.registerSource(investing);
-
-    // InvestingLive.com (New)
-    const investingLive = new InvestingLiveComAdapter('investing_live', 'InvestingLive.com');
+    // 2. InvestingLive.com (via RSS)
+    const investingLive = new RSSAdapter(
+      'investing_live',
+      'InvestingLive.com',
+      'https://investinglive.com/live-feed/rss', 
+      'general_news'
+    );
     this.registerSource(investingLive);
     
-    // Investing.com RSS
+    // 3. Investing.com RSS (Fallback/Main)
     const investingRss = new RSSAdapter(
       'investing_rss', 
       'Investing FX RSS', 

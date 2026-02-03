@@ -26,23 +26,23 @@ class NewsBot {
         const welcomeMsg = `👋 Bonjour ${name} !\n\n` +
                            `Je suis votre assistant Forex AI. 🤖\n` +
                            `Je surveille les marchés et je vous envoie des analyses filtrées par IA.\n\n` +
-                           `📌 **Commandes disponibles :**\n` +
+                           `📌 <b>Commandes disponibles :</b>\n` +
                            `/sources - Voir les sources disponibles\n` +
-                           `/subscribe <source> [tag] - S'abonner (ex: /subscribe ing #USD)\n` +
+                           `/subscribe &lt;source&gt; [tag] - S'abonner (ex: /subscribe ing #USD)\n` +
                            `/mysubs - Voir mes abonnements\n` +
-                           `/search <term> - Chercher dans l'historique`;
+                           `/search &lt;term&gt; - Chercher dans l'historique`;
         
-        this.bot.sendMessage(chatId, welcomeMsg, { parse_mode: 'Markdown' });
+        this.bot.sendMessage(chatId, welcomeMsg, { parse_mode: 'HTML' });
     });
 
     // /sources
     this.bot.onText(/\/sources/, (msg) => {
         const sources = sourceManager.listSources();
-        let reply = "📚 **Sources Disponibles :**\n\n";
+        let reply = "📚 <b>Sources Disponibles :</b>\n\n";
         sources.forEach(s => {
-            reply += `🔹 \`${s.id}\` : ${s.name} (${s.type})\n`;
+            reply += `🔹 <code>${s.id}</code> : ${s.name} (<code>${s.type}</code>)\n`;
         });
-        this.bot.sendMessage(msg.chat.id, reply, { parse_mode: 'Markdown' });
+        this.bot.sendMessage(msg.chat.id, reply, { parse_mode: 'HTML' });
     });
 
     // /subscribe
@@ -58,11 +58,11 @@ class NewsBot {
             
             userManager.subscribe(chatId, sourceId, tag);
             
-            let reply = `✅ Abonnement confirmé pour **${sourceId}**`;
+            let reply = `✅ Abonnement confirmé pour <b>${sourceId}</b>`;
             if (tag) reply += ` (Filtre: ${tag})`;
             else reply += ` (Tout le contenu)`;
             
-            this.bot.sendMessage(chatId, reply, { parse_mode: 'Markdown' });
+            this.bot.sendMessage(chatId, reply, { parse_mode: 'HTML' });
 
         } catch (e) {
             this.bot.sendMessage(chatId, `❌ Erreur : Source inconnue '${sourceId}'. Utilisez /sources pour voir la liste.`);
@@ -77,11 +77,11 @@ class NewsBot {
             return;
         }
 
-        let reply = "📋 **Vos Abonnements :**\n\n";
+        let reply = "📋 <b>Vos Abonnements :</b>\n\n";
         user.subscriptions.forEach((sub, i) => {
-            reply += `${i+1}. **${sub.source}** ${sub.tag ? `(Tag: ${sub.tag})` : '(All)'}\n`;
+            reply += `${i+1}. <b>${sub.source}</b> ${sub.tag ? `(Tag: ${sub.tag})` : '(All)'}\n`;
         });
-        this.bot.sendMessage(msg.chat.id, reply, { parse_mode: 'Markdown' });
+        this.bot.sendMessage(msg.chat.id, reply, { parse_mode: 'HTML' });
     });
     
     // Error Handling

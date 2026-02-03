@@ -1,11 +1,12 @@
 const Parser = require('rss-parser');
 
 class RSSAdapter {
-  constructor(id, name, feedUrl, type = 'general_news') {
+  constructor(id, name, feedUrl, type = 'general_news', filterFn = null) {
     this.id = id;
     this.name = name;
     this.feedUrl = feedUrl;
     this.type = type;
+    this.filterFn = filterFn;
     this.parser = new Parser();
   }
 
@@ -18,7 +19,14 @@ class RSSAdapter {
         throw new Error('RSS Feed is empty');
       }
 
-      const latest = feed.items[0];
+      // Find first item matching the filter (if any)
+      const latest = this.filterFn 
+        ? feed.items.find(this.filterFn)
+        : feed.items[0];
+
+      if (!latest) {
+         throw new Error('No articles matched the filter (e.g. "FX Daily")');
+      }
       console.log(`✅ [Adapter: ${this.name}] Found: "${latest.title}"`);
       console.log(`   Detailed keys: ${Object.keys(latest).join(', ')}`);
 

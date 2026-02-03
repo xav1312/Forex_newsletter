@@ -105,6 +105,15 @@ async function processAndSend(url, recipientEmail) {
     console.log(`   ✅ Email sent successfully!`);
   }
 
+  // Send Telegram
+  try {
+    const telegram = require('./telegram');
+    console.log(`\n📱 Sending to Telegram...`);
+    await telegram.sendNewsletter(summary, article.url);
+  } catch (err) {
+    console.error(`   ⚠️ Failed to send Telegram: ${err.message}`);
+  }
+
   return { article, summary };
 }
 

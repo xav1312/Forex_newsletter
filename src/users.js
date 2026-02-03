@@ -71,6 +71,35 @@ class UserManager {
   }
 
   /**
+   * Remove a subscription
+   * @param {string} userId 
+   * @param {string} sourceId 
+   * @param {string} tag (Optional)
+   */
+  unsubscribe(userId, sourceId, tag = null) {
+    if (!this.users[userId]) return false;
+
+    const initialLength = this.users[userId].subscriptions.length;
+    
+    this.users[userId].subscriptions = this.users[userId].subscriptions.filter(s => {
+      if (tag) {
+        // Remove specific tag subscription
+        return !(s.source === sourceId && s.tag === tag);
+      } else {
+        // Remove ALL subscriptions for this source
+        return s.source !== sourceId;
+      }
+    });
+
+    if (this.users[userId].subscriptions.length < initialLength) {
+      this.save();
+      console.log(`❌ User ${userId} unsubscribed from ${sourceId} [${tag || 'ALL'}]`);
+      return true;
+    }
+    return false;
+  }
+
+  /**
    * Get all users who should receive this article
    * @param {string} sourceId 
    * @param {string[]} articleTags 

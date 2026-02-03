@@ -29,6 +29,7 @@ class NewsBot {
                            `📌 <b>Commandes disponibles :</b>\n` +
                            `/sources - Voir les sources disponibles\n` +
                            `/subscribe &lt;source&gt; [tag] - S'abonner (ex: /subscribe ing #USD)\n` +
+                           `/unsubscribe &lt;source&gt; [tag] - Se désabonner\n` +
                            `/mysubs - Voir mes abonnements\n` +
                            `/search &lt;term&gt; - Chercher dans l'historique`;
         
@@ -66,6 +67,24 @@ class NewsBot {
 
         } catch (e) {
             this.bot.sendMessage(chatId, `❌ Erreur : Source inconnue '${sourceId}'. Utilisez /sources pour voir la liste.`);
+        }
+    });
+
+    // /unsubscribe
+    this.bot.onText(/\/unsubscribe (.+)/, (msg, match) => {
+        const chatId = msg.chat.id.toString();
+        const args = match[1].split(' '); 
+        const sourceId = args[0];
+        const tag = args[1];
+
+        const removed = userManager.unsubscribe(chatId, sourceId, tag);
+        
+        if (removed) {
+            let reply = `❌ Désabonnement confirmé pour <b>${sourceId}</b>`;
+            if (tag) reply += ` (Filtre: ${tag})`;
+            this.bot.sendMessage(chatId, reply, { parse_mode: 'HTML' });
+        } else {
+            this.bot.sendMessage(chatId, `⚠️ Vous n'étiez pas abonné à <b>${sourceId}</b>${tag ? ` avec le tag ${tag}` : ''}.`);
         }
     });
 

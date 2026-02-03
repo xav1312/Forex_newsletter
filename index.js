@@ -202,6 +202,9 @@ ENVIRONMENT VARIABLES (in .env file):
   let processPromise;
   
   if (command === 'watch') {
+    // Start Bot Interface
+    try { require('./src/bot'); } catch (e) { console.error('Bot Error:', e); }
+
     // Start the auto-watcher
     startWatcher({ intervalMinutes: interval });
     // Don't exit - keep running

@@ -1,13 +1,10 @@
 const fs = require('fs');
 const path = require('path');
-const { getLatestArticle } = require('./sources/ing-think');
-const { scrapeArticle } = require('./scraper');
-const { summarizeWithGroq, simpleSummary } = require('./summarizer');
-const { sendNewsletter, previewNewsletter } = require('./emailer');
+const sourceManager = require('./source-manager');
+const userManager = require('./users');
+const history = require('./history');
 
-const { getEventsForCurrencies } = require('./economics');
-
-// State file to track last processed article
+// State file to track last processed article per source
 const STATE_FILE = path.join(__dirname, '..', '.watcher-state.json');
 
 /**
@@ -26,11 +23,13 @@ function loadState() {
 }
 
 /**
- * Save the current state
- * @param {string} articleUrl - URL of the last processed article
+ * Save the state for a specific source
+ * @param {string} sourceId
+ * @param {string} articleUrl
  */
-function saveState(articleUrl) {
-  const state = {
+function saveState(sourceId, articleUrl) {
+  const state = loadState() || {};
+  state[sourceId] = {
     lastArticleUrl: articleUrl,
     lastCheck: new Date().toISOString(),
   };
@@ -39,73 +38,84 @@ function saveState(articleUrl) {
 
 /**
  * Process and send newsletter for an article
+ * @param {object} source - Source object
  * @param {string} url - Article URL
- * @param {string} recipientEmail - Email to send to
+ * @param {string} recipientEmail - Admin Email to send to
  */
-async function processAndSend(url, recipientEmail) {
-  console.log(`\n📥 Scraping article...`);
+async function processAndSend(source, url, recipientEmail) {
+  console.log(`\n📥 Scraping article from ${source.name}...`);
+  // Process Article (Scrape + Summary) - Reusing logic from index.js via direct call would be cleaner
+  // But for now, let's keep it here or import the main process logic.
+  // Ideally, use the exposed processArticle from index.js to avoid code duplication!
+  // But circular dependency risk. Let's look at what we have.
+  // We imported scrapeArticle and summarizeWithGroq.
+  
   const article = await scrapeArticle(url);
   console.log(`   Title: ${article.title}`);
-  console.log(`   Content: ${article.content.length} characters`);
 
-  console.log(`\n🤖 Generating French summary with Groq...`);
+  console.log(`\n🤖 Generating Summary...`);
   let summary;
-  
+
+  // Use AI
   if (process.env.GROQ_API_KEY) {
-    try {
-      summary = await summarizeWithGroq(article);
-    } catch (error) {
-      console.error('   ❌ Groq AI failed:', error.message);
-      summary = simpleSummary(article);
-    }
+      try {
+          summary = await summarizeWithGroq(article, { sourceType: source.type });
+      } catch (e) {
+          console.error('AI Failed', e);
+          summary = simpleSummary(article);
+      }
   } else {
-    console.log('   ⚠️  No GROQ_API_KEY - using simple summary');
-    summary = simpleSummary(article);
+      summary = simpleSummary(article);
+  }
+
+  // Add Calendar (Simplified logic here, or reuse index.js logic)
+  try {
+      if (summary.currencies) {
+          const currencies = Object.keys(summary.currencies);
+          if (currencies.length > 0) {
+             const events = await getEventsForCurrencies(currencies, article.publishedTime);
+             for(const [c, ev] of Object.entries(events)) {
+                 if(summary.currencies[c]) summary.currencies[c].events = ev;
+             }
+          }
+      }
+  } catch (e) { console.error('Calendar error', e.message); }
+
+  // Save Preview
+  const outputDir = path.join(__dirname, '..', 'output');
+  if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });
+  fs.writeFileSync(path.join(outputDir, `newsletter_${source.id}_${Date.now()}.html`), previewNewsletter(article, summary));
+
+  // --- SMART DISPATCH ---
+  console.log(`\n🚀 Dispatching Newsletter...`);
+  const tags = summary.tags || [];
+  
+  // 1. Get Recipients from UserManager
+  const recipients = userManager.getRecipients(source.id, tags);
+  console.log(`   🎯 Matching Users: ${recipients.length} (Source: ${source.id}, Tags: ${tags.join(', ')})`);
+
+  if (recipients.length > 0) {
+      for (const userId of recipients) {
+          try {
+              await sendNewsletter(summary, article.url, userId);
+              console.log(`      ✅ Sent to ${userId}`);
+          } catch (err) {
+              console.error(`      ❌ Failed to send to ${userId}: ${err.message}`);
+          }
+      }
+  } else {
+      console.log(`   ⚠️ No subscribers found for this content.`);
+  }
+
+  // 2. Admin Email Fallback
+  if (recipientEmail) {
+    await sendNewsletter(article, summary, { to: recipientEmail }).catch(e => console.error('Email failed', e.message));
   }
   
-  console.log(`   Currencies analyzed: ${Object.keys(summary.currencies).join(', ') || 'none'}`);
+  // 3. Save to Global History
+  history.addArticle(article, summary);
 
-  // --- Add Economic Calendar Data ---
-  try {
-    const currencies = Object.keys(summary.currencies);
-    if (currencies.length > 0) {
-      console.log(`\n📅 Fetching economic calendar for: ${currencies.join(', ')}...`);
-      const eventsByCurrency = await getEventsForCurrencies(currencies);
-      
-      // Inject events into summary
-      for (const [currency, events] of Object.entries(eventsByCurrency)) {
-        if (summary.currencies[currency]) {
-          summary.currencies[currency].events = events;
-          if (events.length > 0) {
-            console.log(`   ✅ Added ${events.length} events for ${currency}`);
-          }
-        }
-      }
-    }
-  } catch (err) {
-    console.error(`   ⚠️ Failed to fetch economic calendar: ${err.message}`);
-    // Don't stop process, just continue without calendar data
-  }
-  // ----------------------------------
-
-  // Save preview
-  const outputDir = path.join(__dirname, '..', 'output');
-  if (!fs.existsSync(outputDir)) {
-    fs.mkdirSync(outputDir, { recursive: true });
-  }
-  const filename = `fx_daily_${Date.now()}.html`;
-  const filepath = path.join(outputDir, filename);
-  fs.writeFileSync(filepath, previewNewsletter(article, summary));
-  console.log(`\n💾 Preview saved: ${filepath}`);
-
-  // Send email
-  if (recipientEmail) {
-    console.log(`\n📧 Sending email to ${recipientEmail}...`);
-    await sendNewsletter(article, summary, { to: recipientEmail });
-    console.log(`   ✅ Email sent successfully!`);
-  }
-
-  return { article, summary };
+  return true;
 }
 
 /**
@@ -125,42 +135,49 @@ async function checkForNewArticle(options = {}) {
   console.log(`   Time: ${new Date().toLocaleString('fr-FR')}`);
 
   try {
-    // Get the latest FX Daily article
-    const latestArticle = await getLatestArticle();
-    
-    // Check if it's an FX Daily article
-    if (!latestArticle.url.includes('fx-daily')) {
-      console.log(`\n⏭️  Latest article is not FX Daily: "${latestArticle.title}"`);
-      console.log('   Waiting for next FX Daily publication...');
-      return false;
+    // Iterate over ALL sources
+    const sources = sourceManager.listSources();
+    let hasNewContent = false;
+
+    // Load state matching generic structure
+    const state = loadState() || {};
+
+    for (const srcMeta of sources) {
+        try {
+            const source = sourceManager.getSource(srcMeta.id);
+            console.log(`\n🔍 Checking source: ${source.name}...`);
+            
+            const latestArticle = await source.fetchLatest();
+            
+            // Check state for THIS source
+            const lastUrl = state[source.id]?.lastArticleUrl;
+
+            if (!forceProcess && lastUrl === latestArticle.url) {
+                console.log(`   ✅ Up to date.`);
+                continue;
+            }
+
+            console.log(`   🆕 NEW CONTENT: "${latestArticle.title}"`);
+            
+            // Process
+            await processAndSend(source, latestArticle.url, recipientEmail); // Pass source object
+            
+            // Update State
+            saveState(source.id, latestArticle.url);
+            hasNewContent = true;
+
+        } catch (err) {
+            console.error(`   ❌ Failed to check ${srcMeta.name}: ${err.message}`);
+        }
     }
 
-    console.log(`\n📰 Latest FX Daily: "${latestArticle.title}"`);
-    console.log(`   URL: ${latestArticle.url}`);
-
-    // Load previous state
-    const state = loadState();
-    
-    // Check if this is a new article
-    if (!forceProcess && state && state.lastArticleUrl === latestArticle.url) {
-      console.log(`\n✅ Already processed this article.`);
-      console.log(`   Last check: ${new Date(state.lastCheck).toLocaleString('fr-FR')}`);
-      return false;
+    if (hasNewContent) {
+        console.log('\n' + '='.repeat(60));
+        console.log('✨ Check cycle completed with new content.');
+        console.log('='.repeat(60) + '\n');
     }
-
-    console.log(`\n🆕 NEW ARTICLE DETECTED!`);
     
-    // Process and send
-    await processAndSend(latestArticle.url, recipientEmail);
-    
-    // Save state
-    saveState(latestArticle.url);
-    
-    console.log('\n' + '='.repeat(60));
-    console.log('✨ New FX Daily newsletter sent successfully!');
-    console.log('='.repeat(60) + '\n');
-    
-    return true;
+    return hasNewContent;
 
   } catch (error) {
     console.error(`\n❌ Error checking for new article:`, error.message);

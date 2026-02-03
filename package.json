@@ -24,6 +24,7 @@
     "dotenv": "^17.2.3",
     "groq-sdk": "^0.37.0",
     "jsdom": "^27.4.0",
+    "node-telegram-bot-api": "^0.67.0",
     "nodemailer": "^7.0.12",
     "resend": "^6.8.0",
     "rss-parser": "^3.13.0"

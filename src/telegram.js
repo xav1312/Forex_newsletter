@@ -6,12 +6,12 @@ const { getTradingEconomicsLink } = require('./economics');
  * @param {string} text - The message to send
  * @returns {Promise<void>}
  */
-async function sendMessage(text) {
+async function sendMessage(text, specificChatId = null) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
-  const chatId = process.env.TELEGRAM_CHAT_ID;
+  const chatId = specificChatId || process.env.TELEGRAM_CHAT_ID;
 
   if (!token || !chatId) {
-    console.warn('⚠️ Telegram not configured (missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID). Skipping.');
+    console.warn('⚠️ Telegram not configured or no recipient. Skipping.');
     return;
   }
 
@@ -33,11 +33,17 @@ async function sendMessage(text) {
  * Format and send the full newsletter to Telegram
  * @param {object} analysis - The AI generated analysis JSON
  * @param {string} articleUrl - Original link
+ * @param {string} [specificChatId] - Optional specific user ID (defaults to Env)
  */
-async function sendNewsletter(analysis, articleUrl) {
+async function sendNewsletter(analysis, articleUrl, specificChatId = null) {
   if (!analysis) return;
 
-  // 1. Header with Title
+  // Determine Recipient
+  const chatId = specificChatId || process.env.TELEGRAM_CHAT_ID;
+  if (!chatId) {
+      console.warn('⚠️ No Chat ID provided for Telegram message.');
+      return;
+  }
   let message = `<b>${analysis.title}</b>\n\n`;
   message += `<i>${analysis.introduction}</i>\n\n`;
 
@@ -76,7 +82,7 @@ async function sendNewsletter(analysis, articleUrl) {
   message += `🔗 <a href="${articleUrl}">Lire l'article original</a>`;
 
   // Send the formatted message
-  await sendMessage(message);
+  await sendMessage(message, chatId);
 }
 
 module.exports = { sendMessage, sendNewsletter };

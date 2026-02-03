@@ -88,7 +88,8 @@ FORMAT DE RÉPONSE (JSON pur):
   "introduction": "Le fait marquant (Summary)",
   "currencies": {}, 
   "keyTakeaway": "L'impact majeur à retenir (1 phrase)",
-  "conclusion": "Analyse d'impact (Bullish/Bearish pour quels actifs ?)"
+  "conclusion": "Analyse d'impact (Bullish/Bearish pour quels actifs ?)",
+  "tags": ["#Inflation", "#Fed", "#USD"]
 }
 
 IMPORTANT: Réponds UNIQUEMENT avec le JSON.`;
@@ -125,7 +126,8 @@ FORMAT DE RÉPONSE (JSON pur):
     }
   },
   "conclusion": "Direction probable des prochaines sessions.",
-  "keyTakeaway": "L'insight le plus important pour un trader."
+  "keyTakeaway": "L'insight le plus important pour un trader.",
+  "tags": ["#Inflation", "#Fed", "#USD"]
 }
 
 IMPORTANT: Réponds UNIQUEMENT avec le JSON.`;
@@ -166,6 +168,7 @@ IMPORTANT: Réponds UNIQUEMENT avec le JSON.`;
       currencies: result.currencies || {},
       conclusion: result.conclusion || '',
       keyTakeaway: result.keyTakeaway || '',
+      tags: result.tags || mentionedCurrencies,
       mentionedCurrencies: mentionedCurrencies,
     };
 
@@ -214,6 +217,7 @@ function simpleSummary(article) {
     currencies: currencies,
     conclusion: 'Pour un résumé détaillé en français, configurez votre clé API IA.',
     keyTakeaway: 'Résumé automatique - traduction non disponible sans API.',
+    tags: mentionedCurrencies.map(c => `#${c}`), // Naive tagging
     mentionedCurrencies: mentionedCurrencies,
   };
 }

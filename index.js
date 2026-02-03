@@ -8,6 +8,7 @@ const { checkForNewArticle, startWatcher } = require('./src/watcher');
 const sourceManager = require('./src/source-manager');
 const fs = require('fs');
 const path = require('path');
+const history = require('./src/history');
 
 // ... (existing processArticle function remains unchanged) ...
 
@@ -141,6 +142,9 @@ async function processArticle(url, options = {}) {
     console.log('✨ DONE! Newsletter generated successfully.');
     console.log('='.repeat(60) + '\n');
 
+    // Save to history
+    history.addArticle(article, summary);
+
     return { article, summary, html };
 
   } catch (error) {
@@ -209,6 +213,25 @@ ENVIRONMENT VARIABLES (in .env file):
   } else if (command === 'ing') {
     // Auto-fetch latest ING Think FX article (Legacy Alias)
     processPromise = processSource('ing', { sendEmail });
+  } else if (command === 'search') {
+    // Search in history
+    const query = process.argv[3];
+    if (!query) {
+        console.error('❌ Please provide a search term: node index.js search <term>');
+        process.exit(1);
+    }
+    const results = history.search(query);
+    console.log(`\n🔍 Search results for "${query}":\n`);
+    if (results.length === 0) {
+        console.log('   No articles found.');
+    } else {
+        results.forEach(r => {
+            console.log(`   - [${new Date(r.date).toLocaleDateString()}] ${r.title}`);
+            console.log(`     Tags: ${r.tags.join(', ')}`);
+            console.log(`     Link: ${r.url}\n`);
+        });
+    }
+    process.exit(0);
   } else if (!command.startsWith('http') && !command.startsWith('-')) {
     // Try to use command as a source ID (e.g., 'reuters')
     try {

@@ -89,10 +89,11 @@ FORMAT DE RÉPONSE (JSON pur):
   "currencies": {}, 
   "keyTakeaway": "L'impact majeur à retenir (1 phrase)",
   "conclusion": "Analyse d'impact (Bullish/Bearish pour quels actifs ?)",
-  "tags": ["#Inflation", "#Fed", "#USD"]
+  "tags": ["#Tag1", "#Tag2"]
 }
 
-IMPORTANT: Réponds UNIQUEMENT avec le JSON.`;
+IMPORTANT: Réponds UNIQUEMENT avec le JSON.
+CONSIGNES TAGS : N'utilise #USD que si l'article traite spécifiquement de l'économie US ou de la Fed. Si l'article traite d'une autre devise (ex: JPY) sans impact majeur US, ne mets pas #USD.`;
 
   } else {
     // Default: FX Daily breakdown (ING style)
@@ -127,10 +128,11 @@ FORMAT DE RÉPONSE (JSON pur):
   },
   "conclusion": "Direction probable des prochaines sessions.",
   "keyTakeaway": "L'insight le plus important pour un trader.",
-  "tags": ["#Inflation", "#Fed", "#USD"]
+  "tags": ["#Tag1", "#Tag2"]
 }
 
-IMPORTANT: Réponds UNIQUEMENT avec le JSON.`;
+IMPORTANT: Réponds UNIQUEMENT avec le JSON.
+CONSIGNES TAGS : N'utilise #USD que si l'article traite spécifiquement de l'économie US ou de la Fed.`;
   }
 
   try {

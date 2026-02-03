@@ -43,19 +43,31 @@ function saveState(sourceId, articleUrl) {
 /**
  * Process and send newsletter for an article
  * @param {object} source - Source object
- * @param {string} url - Article URL
+ * @param {object} articleData - Article object (url, title, content?, description?)
  * @param {string} recipientEmail - Admin Email to send to
  */
-async function processAndSend(source, url, recipientEmail) {
-  console.log(`\n📥 Scraping article from ${source.name}...`);
-  // Process Article (Scrape + Summary) - Reusing logic from index.js via direct call would be cleaner
-  // But for now, let's keep it here or import the main process logic.
-  // Ideally, use the exposed processArticle from index.js to avoid code duplication!
-  // But circular dependency risk. Let's look at what we have.
-  // We imported scrapeArticle and summarizeWithGroq.
+async function processAndSend(source, articleData, recipientEmail) {
+  console.log(`\n📥 Processing article from ${source.name}...`);
   
-  const article = await scrapeArticle(url);
-  console.log(`   Title: ${article.title}`);
+  let article;
+
+  // 1. Decide: Scrape or Use Existing Data?
+  // If we have full content (unlikely from RSS) or if it's an RSS Item with description
+  // AND we know scraping is blocked (e.g. Investing), we use the description as content.
+  if (source.id.includes('rss') || source.type === 'general_news') {
+      console.log('   ℹ️  Using RSS description as content (skipping scrape to avoid 403)...');
+      article = {
+          ...articleData,
+          content: articleData.description || articleData.content || 'No content available.',
+          siteName: source.name
+      };
+      console.log(`   Title: ${article.title}`);
+  } else {
+      // For ING (Scraper) or others, we want the full scraped data
+      console.log(`   🌍 Scraping full page: ${articleData.url}`);
+      article = await scrapeArticle(articleData.url);
+      console.log(`   Title: ${article.title}`);
+  }
 
   console.log(`\n🤖 Generating Summary...`);
   let summary;
@@ -111,12 +123,7 @@ async function processAndSend(source, url, recipientEmail) {
       console.log(`   ⚠️ No subscribers found for this content.`);
   }
 
-  // 2. Admin Email Fallback
-  if (recipientEmail) {
-    await sendNewsletter(article, summary, { to: recipientEmail }).catch(e => console.error('Email failed', e.message));
-  }
-  
-  // 3. Save to Global History
+  // 2. Save to Global History
   history.addArticle(article, summary);
 
   return true;
@@ -164,7 +171,7 @@ async function checkForNewArticle(options = {}) {
             console.log(`   🆕 NEW CONTENT: "${latestArticle.title}"`);
             
             // Process
-            await processAndSend(source, latestArticle.url, recipientEmail); // Pass source object
+            await processAndSend(source, latestArticle, recipientEmail); // Pass whole article object
             
             // Update State
             saveState(source.id, latestArticle.url);
@@ -204,7 +211,7 @@ async function startWatcher(options = {}) {
   console.log('═'.repeat(60));
   console.log(`   📧 Recipient: ${recipientEmail || '⚠️ NOT SET'}`);
   console.log(`   ⏱️  Check interval: Every ${intervalMinutes} minutes`);
-  console.log(`   🤖 AI Summary: ${process.env.GEMINI_API_KEY ? '✅ Enabled' : '❌ Disabled'}`);
+  console.log(`   🤖 AI Summary: ${ (process.env.GEMINI_API_KEY || process.env.GROQ_API_KEY) ? '✅ Enabled' : '❌ Disabled'}`);
   console.log('═'.repeat(60));
   
   if (!recipientEmail) {

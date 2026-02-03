@@ -29,6 +29,24 @@ class SourceManager {
       'general_news'
     );
     this.registerSource(investingRss);
+
+    // 4. Reuters Forex (via Google News RSS)
+    const reuters = new RSSAdapter(
+      'reuters',
+      'Reuters Forex',
+      'https://news.google.com/rss/search?q=site:reuters.com+forex&hl=en-GB&gl=GB&ceid=GB:en',
+      'general_news'
+    );
+    this.registerSource(reuters);
+
+    // 5. DailyFX Market News
+    const dailyfx = new RSSAdapter(
+      'dailyfx',
+      'DailyFX News',
+      'https://www.dailyfx.com/feeds/forex-market-news',
+      'general_news'
+    );
+    this.registerSource(dailyfx);
   }
 
   registerSource(source) {

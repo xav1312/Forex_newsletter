@@ -53,17 +53,23 @@ async function getEconomicEvents() {
       }
 
       const eventDate = new Date(year, month - 1, day, hours, minutes);
+
+      const timezone = process.env.TIMEZONE || 'UTC';
       
-      // Filter: Keep events from YESTERDAY, TODAY and TOMORROW (to handle UTC delays)
-      const yesterday = new Date(today);
-      yesterday.setDate(today.getDate() - 1);
-      
-      const isRelevantDate = 
-        (eventDate.getDate() === today.getDate() && eventDate.getMonth() === today.getMonth()) ||
-        (eventDate.getDate() === tomorrow.getDate() && eventDate.getMonth() === tomorrow.getMonth()) ||
-        (eventDate.getDate() === yesterday.getDate() && eventDate.getMonth() === yesterday.getMonth());
-      
-      if (!isRelevantDate) return;
+      // Get "Today" in the user's timezone as "M/D/YYYY" string
+      const todayString = new Date().toLocaleDateString('en-US', {
+        timeZone: timezone,
+        year: 'numeric',
+        month: 'numeric',
+        day: 'numeric'
+      }); // e.g., "2/3/2026"
+
+      // Reconstruct event date string from XML match to match "M/D/YYYY"
+      // XML is "M-D-YYYY" (e.g. "2-3-2026")
+      const eventDateString = `${parseInt(month)}/${parseInt(day)}/${year}`;
+
+      // Strict comparison: Event must match Today's date in User's Timezone
+      if (todayString !== eventDateString) return;
 
       const impact = node.querySelector('impact')?.textContent || 'Low';
       const country = node.querySelector('country')?.textContent || '';
@@ -113,4 +119,50 @@ async function getEventsForCurrencies(currencies) {
   return eventsByCurrency;
 }
 
-module.exports = { getEconomicEvents, getEventsForCurrencies };
+
+const COUNTRY_MAP = {
+  'USD': 'united-states',
+  'EUR': 'euro-area',
+  'GBP': 'united-kingdom',
+  'JPY': 'japan',
+  'AUD': 'australia',
+  'NZD': 'new-zealand',
+  'CAD': 'canada',
+  'CHF': 'switzerland',
+  'CNY': 'china'
+};
+
+const INDICATOR_MAP = [
+  { keywords: ['Interest Rate', 'Decision', 'Rate'], slug: 'interest-rate' },
+  { keywords: ['Inflation', 'CPI'], slug: 'inflation-rate' },
+  { keywords: ['GDP'], slug: 'gdp-growth' },
+  { keywords: ['Unemployment', 'Job'], slug: 'unemployment-rate' },
+  { keywords: ['Retail Sales'], slug: 'retail-sales' },
+  { keywords: ['PMI', 'Manufacturing'], slug: 'manufacturing-pmi' },
+  { keywords: ['Services'], slug: 'services-pmi' },
+  { keywords: ['Trade Balance'], slug: 'balance-of-trade' },
+  { keywords: ['Consumer Confidence', 'Sentiment'], slug: 'consumer-confidence' },
+  { keywords: ['Building Permits', 'Housing'], slug: 'building-permits' },
+  { keywords: ['Producer Prices', 'PPI'], slug: 'producer-prices' },
+];
+
+function getTradingEconomicsLink(currency, title) {
+  const countrySlug = COUNTRY_MAP[currency];
+  if (!countrySlug) return null;
+
+  const indicator = INDICATOR_MAP.find(ind => 
+    ind.keywords.some(k => title.toLowerCase().includes(k.toLowerCase()))
+  );
+
+  if (indicator) {
+    return `https://tradingeconomics.com/${countrySlug}/${indicator.slug}`;
+  }
+  
+  return null;
+}
+
+module.exports = { 
+  getEconomicEvents, 
+  getEventsForCurrencies, 
+  getTradingEconomicsLink 
+};

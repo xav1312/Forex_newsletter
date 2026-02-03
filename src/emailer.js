@@ -1,5 +1,6 @@
 const nodemailer = require('nodemailer');
 const { CURRENCY_NAMES } = require('./summarizer');
+const { getTradingEconomicsLink } = require('./economics');
 // Force git sync update
 
 // Sentiment colors
@@ -9,47 +10,7 @@ const SENTIMENT_COLORS = {
   neutre: { bg: '#f3f4f6', text: '#374151', border: '#9ca3af' },
 };
 
-const COUNTRY_MAP = {
-  'USD': 'united-states',
-  'EUR': 'euro-area',
-  'GBP': 'united-kingdom',
-  'JPY': 'japan',
-  'AUD': 'australia',
-  'NZD': 'new-zealand',
-  'CAD': 'canada',
-  'CHF': 'switzerland',
-  'CNY': 'china'
-};
 
-const INDICATOR_MAP = [
-  { keywords: ['Interest Rate', 'Decision', 'Rate'], slug: 'interest-rate' },
-  { keywords: ['Inflation', 'CPI'], slug: 'inflation-rate' },
-  { keywords: ['GDP'], slug: 'gdp-growth' },
-  { keywords: ['Unemployment', 'Job'], slug: 'unemployment-rate' },
-  { keywords: ['Retail Sales'], slug: 'retail-sales' },
-  { keywords: ['PMI', 'Manufacturing'], slug: 'manufacturing-pmi' },
-  { keywords: ['Services'], slug: 'services-pmi' },
-  { keywords: ['Trade Balance'], slug: 'balance-of-trade' },
-  { keywords: ['Consumer Confidence', 'Sentiment'], slug: 'consumer-confidence' },
-  { keywords: ['Building Permits', 'Housing'], slug: 'building-permits' },
-  { keywords: ['Producer Prices', 'PPI'], slug: 'producer-prices' },
-];
-
-function getTradingEconomicsLink(currency, title) {
-  const countrySlug = COUNTRY_MAP[currency];
-  if (!countrySlug) return null;
-
-  const indicator = INDICATOR_MAP.find(ind => 
-    ind.keywords.some(k => title.toLowerCase().includes(k.toLowerCase()))
-  );
-
-  if (indicator) {
-    return `https://tradingeconomics.com/${countrySlug}/${indicator.slug}`;
-  }
-  
-  // No generic search fallback to keep it clean (only show button if valid indicator)
-  return null;
-}
 
 /**
  * Create an HTML email template for the FX newsletter

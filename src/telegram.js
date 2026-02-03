@@ -1,4 +1,5 @@
 const axios = require('axios');
+const { getTradingEconomicsLink } = require('./economics');
 
 /**
  * Send a simple text message to the configured Telegram chat
@@ -48,7 +49,21 @@ async function sendNewsletter(analysis, articleUrl) {
         const emoji = data.emoji || '➡️';
         const sentiment = data.sentiment ? data.sentiment.toUpperCase() : 'NEUTRE';
         message += `${emoji} <b>${code}</b> (${sentiment})\n`;
-        message += `${data.summary || 'Pas de détails.'}\n\n`;
+        message += `${data.summary || 'Pas de détails.'}\n`;
+
+        // Add Economic Calendar if events exist
+        if (data.events && data.events.length > 0) {
+           message += `\n📅 <i>Calendrier Éco :</i>\n`;
+           data.events.forEach(event => {
+             const time = event.date ? new Date(event.date).toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'}) : '';
+             const impact = event.impact === 'High' ? '🔴' : '🟠';
+             const teLink = getTradingEconomicsLink(code, event.title);
+             const linkHtml = teLink ? ` <a href="${teLink}">[Graph ↗]</a>` : '';
+             
+             message += `• ${time} ${impact} ${event.title}${linkHtml}\n`;
+           });
+        }
+        message += `\n`; // Spacing between currencies
       }
     }
   } else if (analysis.conclusion) {

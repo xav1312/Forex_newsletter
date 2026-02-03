@@ -1,4 +1,5 @@
 const RSSAdapter = require('./adapters/rss');
+const INGAdapter = require('./adapters/ing');
 
 class SourceManager {
   constructor() {
@@ -7,21 +8,15 @@ class SourceManager {
   }
 
   registerDefaults() {
-    // 1. ING Think FX (via RSS + Filter)
-    const ing = new RSSAdapter(
-      'ing', 
-      'ING Think FX', 
-      'https://think.ing.com/rss/all', 
-      'fx_daily',
-      (item) => item.title && item.title.toLowerCase().includes('fx daily')
-    );
+    // 1. ING Think FX (Scraper restored)
+    const ing = new INGAdapter('ing', 'ING Think FX');
     this.registerSource(ing);
 
     // 2. InvestingLive.com (via RSS)
     const investingLive = new RSSAdapter(
       'investing_live',
       'InvestingLive.com',
-      'https://investinglive.com/live-feed/rss', 
+      'https://investinglive.com/feed/forex/', 
       'general_news'
     );
     this.registerSource(investingLive);

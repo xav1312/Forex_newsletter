@@ -28,7 +28,7 @@ class HistoryManager {
     fs.writeFileSync(HISTORY_FILE, JSON.stringify(history, null, 2));
   }
 
-  addArticle(article, analysis) {
+  addArticle(article, analysis, sourceId = null) {
     const history = this.load();
     
     // Avoid duplicates (by URL)
@@ -43,7 +43,8 @@ class HistoryManager {
       title: analysis.title || article.title,
       tags: analysis.tags || [],
       keyTakeaway: analysis.keyTakeaway || '',
-      source: article.siteName
+      source: sourceId || article.siteName,
+      sourceName: article.siteName
     };
 
     // Keep only last 1000 articles

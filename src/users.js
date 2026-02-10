@@ -7,6 +7,7 @@ class UserManager {
   constructor() {
     this.ensureFileExists();
     this.users = this.load();
+    this.migrate();
   }
 
   ensureFileExists() {
@@ -30,17 +31,37 @@ class UserManager {
   }
 
   /**
-   * Register or update a user
-   * @param {string} userId - Telegram Chat ID
-   * @param {string} firstName - User's first name
+   * Migrate old single-tag structure to multi-tag
    */
+  migrate() {
+    let changed = false;
+    for (const userId in this.users) {
+      const user = this.users[userId];
+      if (user.subscriptions) {
+        user.subscriptions = user.subscriptions.map(sub => {
+          if (sub.tag !== undefined && !sub.tags) {
+            sub.tags = sub.tag ? [sub.tag] : [];
+            delete sub.tag;
+            changed = true;
+          }
+          if (!sub.tags) {
+            sub.tags = [];
+            changed = true;
+          }
+          return sub;
+        });
+      }
+    }
+    if (changed) this.save();
+  }
+
   registerUser(userId, firstName) {
     if (!this.users[userId]) {
       this.users[userId] = {
         id: userId,
         name: firstName,
         joinedAt: new Date().toISOString(),
-        subscriptions: [] // Array of { source: 'ing', tags: ['#USD'] }
+        subscriptions: [] 
       };
       this.save();
       console.log(`👤 New user registered: ${firstName} (${userId})`);
@@ -48,86 +69,83 @@ class UserManager {
   }
 
   /**
-   * Add a subscription
+   * Add one or more tags to a source subscription
    * @param {string} userId 
    * @param {string} sourceId 
-   * @param {string} tag (Optional - specific tag like '#Inflation')
+   * @param {string|string[]} inputTags - String or array of tags
    */
-  subscribe(userId, sourceId, tag = null) {
+  subscribe(userId, sourceId, inputTags = null) {
     if (!this.users[userId]) return false;
 
-    // Check if already subscribed to this exact combo
-    const existing = this.users[userId].subscriptions.find(s => 
-      s.source === sourceId && s.tag === tag
-    );
-
-    if (!existing) {
-      this.users[userId].subscriptions.push({ source: sourceId, tag });
-      this.save();
-      console.log(`✅ User ${userId} subscribed to ${sourceId} [${tag || 'ALL'}]`);
-      return true;
-    }
-    return false;
-  }
-
-  /**
-   * Remove a subscription
-   * @param {string} userId 
-   * @param {string} sourceId 
-   * @param {string} tag (Optional)
-   */
-  unsubscribe(userId, sourceId, tag = null) {
-    if (!this.users[userId]) return false;
-
-    const initialLength = this.users[userId].subscriptions.length;
+    let sub = this.users[userId].subscriptions.find(s => s.source === sourceId);
     
-    this.users[userId].subscriptions = this.users[userId].subscriptions.filter(s => {
-      if (tag) {
-        // Remove specific tag subscription
-        return !(s.source === sourceId && s.tag === tag);
-      } else {
-        // Remove ALL subscriptions for this source
-        return s.source !== sourceId;
-      }
-    });
-
-    if (this.users[userId].subscriptions.length < initialLength) {
-      this.save();
-      console.log(`❌ User ${userId} unsubscribed from ${sourceId} [${tag || 'ALL'}]`);
-      return true;
+    if (!sub) {
+      sub = { source: sourceId, tags: [] };
+      this.users[userId].subscriptions.push(sub);
     }
-    return false;
+
+    if (inputTags) {
+      const tagsToAdd = Array.isArray(inputTags) 
+        ? inputTags 
+        : inputTags.split(/[,\s]+/).map(t => t.trim().startsWith('#') ? t.trim() : `#${t.trim()}`);
+      
+      tagsToAdd.forEach(tag => {
+        if (!sub.tags.some(t => t.toLowerCase() === tag.toLowerCase())) {
+          sub.tags.push(tag);
+        }
+      });
+    } else {
+      // If no tags, it means ALL content
+      sub.tags = [];
+    }
+
+    this.save();
+    console.log(`✅ User ${userId} updated sub for ${sourceId} (Tags: ${sub.tags.join(', ') || 'ALL'})`);
+    return true;
   }
 
   /**
-   * Get all users who should receive this article
-   * @param {string} sourceId 
-   * @param {string[]} articleTags 
+   * Remove a source or specific tags
    */
+  unsubscribe(userId, sourceId, tagsToRemove = null) {
+    if (!this.users[userId]) return false;
+
+    const subIndex = this.users[userId].subscriptions.findIndex(s => s.source === sourceId);
+    if (subIndex === -1) return false;
+
+    if (!tagsToRemove) {
+      // Remove entire source
+      this.users[userId].subscriptions.splice(subIndex, 1);
+    } else {
+      const tagsArray = Array.isArray(tagsToRemove) ? tagsToRemove : [tagsToRemove];
+      const sub = this.users[userId].subscriptions[subIndex];
+      
+      sub.tags = sub.tags.filter(t => 
+        !tagsArray.some(tr => tr.toLowerCase() === t.toLowerCase())
+      );
+
+      // Note: If tags become empty, it technically means "ALL" in our logic, 
+      // but usually the user wants to keep the source. 
+      // Let's keep it as is.
+    }
+
+    this.save();
+    return true;
+  }
+
   getRecipients(sourceId, articleTags = []) {
     const recipients = [];
-
     for (const userId in this.users) {
       const user = this.users[userId];
-      
-      // Check each subscription
       const match = user.subscriptions.some(sub => {
-        // 1. Must match Source
         if (sub.source !== sourceId && sub.source !== 'all') return false;
-
-        // 2. If subscription has no tag, it matches EVERYTHING from this source
-        if (!sub.tag) return true;
-
-        // 3. If subscription has a tag, Article MUST have it
-        // Case-insensitive check
-        return articleTags.some(t => t.toLowerCase() === sub.tag.toLowerCase());
+        if (!sub.tags || sub.tags.length === 0) return true;
+        return articleTags.some(at => 
+          sub.tags.some(st => st.toLowerCase() === at.toLowerCase())
+        );
       });
-
-      if (match) {
-        recipients.push(userId);
-      }
+      if (match) recipients.push(userId);
     }
-
     return recipients;
   }
 }

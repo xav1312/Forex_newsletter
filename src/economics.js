@@ -12,99 +12,122 @@ const FF_XML_URL = 'https://nfs.faireconomy.media/ff_calendar_thisweek.xml';
  * @param {Date|string} targetDate - Optional date to filter events for (defaults to Now)
  * @returns {Promise<Array<object>>}
  */
+let weeklyCache = null;
+let lastCacheTime = 0;
+const CACHE_DURATION = 60 * 60 * 1000; // 1 hour
+
+/**
+ * Fetch and parse the full weekly calendar (with caching)
+ */
+async function fetchWeeklyCalendar() {
+    // Return cache if valid
+    if (weeklyCache && (Date.now() - lastCacheTime < CACHE_DURATION)) {
+        return weeklyCache;
+    }
+
+    try {
+        console.log(`📅 Fetching ForexFactory calendar (Live)...`);
+        const response = await axios.get(FF_XML_URL, {
+            timeout: 10000,
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            }
+        });
+
+        const dom = new JSDOM(response.data, { contentType: "text/xml" });
+        const document = dom.window.document;
+        const events = [];
+        const eventNodes = document.querySelectorAll('event');
+
+        eventNodes.forEach(node => {
+            const dateStr = node.querySelector('date')?.textContent;
+            const timeStr = node.querySelector('time')?.textContent;
+            
+            if (!dateStr || !timeStr) return;
+
+            const [month, day, year] = dateStr.split('-');
+            const timeMatch = timeStr.match(/(\d+):(\d+)(am|pm)/i);
+            
+            let hours = 0;
+            let minutes = 0;
+            
+            if (timeMatch) {
+                hours = parseInt(timeMatch[1]);
+                minutes = parseInt(timeMatch[2]);
+                const period = timeMatch[3].toLowerCase();
+                if (period === 'pm' && hours < 12) hours += 12;
+                if (period === 'am' && hours === 12) hours = 0;
+            }
+
+            const eventDate = new Date(year, month - 1, day, hours, minutes);
+            const country = node.querySelector('country')?.textContent || '';
+            const title = node.querySelector('title')?.textContent || '';
+            const impact = node.querySelector('impact')?.textContent || 'Low';
+
+            events.push({
+                title,
+                country, 
+                currency: country, // ForexFactory uses country code like USD, EUR often as Currency
+                date: eventDate,
+                impact, 
+                forecast: node.querySelector('forecast')?.textContent || '',
+                previous: node.querySelector('previous')?.textContent || ''
+            });
+        });
+
+        weeklyCache = events;
+        lastCacheTime = Date.now();
+        return weeklyCache;
+
+    } catch (error) {
+        console.error(`❌ Error fetching calendar:`, error.message);
+        throw error;
+    }
+}
+
+/**
+ * Get economic events filtered by date
+ * @param {Date|string} targetDate - Optional date to filter events for (defaults to Now)
+ * @returns {Promise<Array<object>>}
+ */
 async function getEconomicEvents(targetDate) {
   try {
-    console.log(`📅 Fetching ForexFactory calendar...`);
-    const response = await axios.get(FF_XML_URL, {
-      timeout: 10000,
-      headers: {
-        'User-Agent': 'Mozilla/5.0',
-      }
-    });
+    // 1. Get full data (cached or fresh)
+    const allEvents = await fetchWeeklyCalendar();
+    if (!allEvents) return [];
 
-    const dom = new JSDOM(response.data, { contentType: "text/xml" });
-    const document = dom.window.document;
-    
-    const events = [];
-    const eventNodes = document.querySelectorAll('event');
-
-    // Use provided date or default to now
+    // 2. Determine filter date
     let refDate = targetDate ? new Date(targetDate) : new Date();
-    
-    // Validate date
     if (isNaN(refDate.getTime())) {
         console.warn('⚠️ Invalid reference date provided, defaulting to Now.');
         refDate = new Date();
     }
     
-    // Log the reference date for debugging
     console.log(`   ℹ️ Filtering events for: ${refDate.toDateString()}`);
+    const timezone = process.env.TIMEZONE || 'UTC';
 
-    eventNodes.forEach(node => {
-      const dateStr = node.querySelector('date')?.textContent; // Format: 1-23-2026
-      const timeStr = node.querySelector('time')?.textContent; // Format: 1:30pm
-      
-      if (!dateStr || !timeStr) return;
+    // 3. Filter events
+    const matchingEvents = allEvents.filter(event => {
+        // Compare "Day" strings to match the target date
+        const targetDateString = refDate.toLocaleDateString('en-US', {
+            timeZone: timezone, year: 'numeric', month: 'numeric', day: 'numeric'
+        });
+        
+        const eventDateString = event.date.toLocaleDateString('en-US', {
+            timeZone: timezone, year: 'numeric', month: 'numeric', day: 'numeric'
+        });
 
-      // Parse date and time
-      const [month, day, year] = dateStr.split('-');
-      
-      // Determine time
-      const timeMatch = timeStr.match(/(\d+):(\d+)(am|pm)/i);
-      let hours = 0;
-      let minutes = 0;
-      
-      if (timeMatch) {
-         hours = parseInt(timeMatch[1]);
-         minutes = parseInt(timeMatch[2]);
-         const period = timeMatch[3].toLowerCase();
-         
-         if (period === 'pm' && hours < 12) hours += 12;
-         if (period === 'am' && hours === 12) hours = 0;
-      }
-
-      const eventDate = new Date(year, month - 1, day, hours, minutes);
-
-      const timezone = process.env.TIMEZONE || 'UTC';
-      
-      // Get "Today" relative to the reference date (Article Date) in the user's timezone
-      // We process events matching the Article's "Day"
-      const targetDateString = refDate.toLocaleDateString('en-US', {
-        timeZone: timezone,
-        year: 'numeric',
-        month: 'numeric',
-        day: 'numeric'
-      });
-
-      // Reconstruct event date string from XML match
-      const eventDateString = `${parseInt(month)}/${parseInt(day)}/${year}`;
-
-      // Strict comparison: Event must match the Target Date
-      if (targetDateString !== eventDateString) return;
-
-      const impact = node.querySelector('impact')?.textContent || 'Low';
-      const country = node.querySelector('country')?.textContent || '';
-      const title = node.querySelector('title')?.textContent || '';
-
-      events.push({
-        title,
-        country, 
-        currency: country,
-        date: eventDate,
-        impact, 
-        forecast: node.querySelector('forecast')?.textContent || '',
-        previous: node.querySelector('previous')?.textContent || ''
-      });
+        return targetDateString === eventDateString;
     });
 
-    // Filter only High and Medium impact
-    const importantEvents = events.filter(e => e.impact === 'High' || e.impact === 'Medium');
+    // 4. Return only High/Medium impact
+    const importantEvents = matchingEvents.filter(e => e.impact === 'High' || e.impact === 'Medium');
     
     console.log(`✅ Found ${importantEvents.length} important events for ${refDate.toDateString()}`);
     return importantEvents;
 
   } catch (error) {
-    console.error(`❌ Error fetching calendar:`, error.message);
+    console.error(`❌ Error in getEconomicEvents:`, error.message);
     return [];
   }
 }

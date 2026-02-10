@@ -5,7 +5,7 @@ const userManager = require('./users');
 const history = require('./history');
 const { scrapeArticle } = require('./scraper');
 const { summarizeWithGroq, simpleSummary } = require('./summarizer');
-const { sendNewsletter, previewNewsletter } = require('./emailer');
+const { previewNewsletter } = require('./emailer');
 const { getEventsForCurrencies } = require('./economics');
 
 // State file to track last processed article per source
@@ -13,7 +13,6 @@ const STATE_FILE = path.join(__dirname, '..', '.watcher-state.json');
 
 /**
  * Load the last processed article state
- * @returns {{lastArticleUrl: string, lastCheck: string} | null}
  */
 function loadState() {
   try {
@@ -28,8 +27,6 @@ function loadState() {
 
 /**
  * Save the state for a specific source
- * @param {string} sourceId
- * @param {string} articleUrl
  */
 function saveState(sourceId, articleUrl) {
   const state = loadState() || {};
@@ -41,21 +38,15 @@ function saveState(sourceId, articleUrl) {
 }
 
 /**
- * Process and send newsletter for an article
- * @param {object} source - Source object
- * @param {object} articleData - Article object (url, title, content?, description?)
- * @param {string} recipientEmail - Admin Email to send to
+ * Process and send results for an article
  */
-async function processAndSend(source, articleData, recipientEmail) {
+async function processAndSend(source, articleData) {
   console.log(`\n📥 Processing article from ${source.name}...`);
   
   let article;
 
-  // 1. Decide: Scrape or Use Existing Data?
-  // If we have full content (unlikely from RSS) or if it's an RSS Item with description
-  // AND we know scraping is blocked (e.g. Investing), we use the description as content.
   if (source.id.includes('rss') || source.type === 'general_news') {
-      console.log('   ℹ️  Using RSS description as content (skipping scrape to avoid 403)...');
+      console.log('   ℹ️  Using RSS description as content...');
       article = {
           ...articleData,
           content: articleData.description || articleData.content || 'No content available.',
@@ -63,7 +54,6 @@ async function processAndSend(source, articleData, recipientEmail) {
       };
       console.log(`   Title: ${article.title}`);
   } else {
-      // For ING (Scraper) or others, we want the full scraped data
       console.log(`   🌍 Scraping full page: ${articleData.url}`);
       article = await scrapeArticle(articleData.url);
       console.log(`   Title: ${article.title}`);
@@ -72,7 +62,6 @@ async function processAndSend(source, articleData, recipientEmail) {
   console.log(`\n🤖 Generating Summary...`);
   let summary;
 
-  // Use AI
   if (process.env.GROQ_API_KEY) {
       try {
           summary = await summarizeWithGroq(article, { sourceType: source.type });
@@ -84,7 +73,7 @@ async function processAndSend(source, articleData, recipientEmail) {
       summary = simpleSummary(article);
   }
 
-  // Add Calendar (Simplified logic here, or reuse index.js logic)
+  // Add Calendar
   try {
       if (summary.currencies) {
           const currencies = Object.keys(summary.currencies);
@@ -97,13 +86,13 @@ async function processAndSend(source, articleData, recipientEmail) {
       }
   } catch (e) { console.error('Calendar error', e.message); }
 
-  // Save Preview
+  // Save Preview (internal record)
   const outputDir = path.join(__dirname, '..', 'output');
   if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });
   fs.writeFileSync(path.join(outputDir, `newsletter_${source.id}_${Date.now()}.html`), previewNewsletter(article, summary));
 
   // --- SMART DISPATCH ---
-  console.log(`\n🚀 Dispatching Newsletter...`);
+  console.log(`\n🚀 Dispatching...`);
   const tags = summary.tags || [];
   
   // 1. Get Recipients from UserManager
@@ -111,10 +100,12 @@ async function processAndSend(source, articleData, recipientEmail) {
   console.log(`   🎯 Matching Users: ${recipients.length} (Source: ${source.id}, Tags: ${tags.join(', ')})`);
 
   if (recipients.length > 0) {
+      // Lazy load bot to avoid circular dependencies or premature start
+      const bot = require('./bot');
       for (const userId of recipients) {
           try {
-              await sendNewsletter(summary, article.url, userId);
-              console.log(`      ✅ Sent to ${userId}`);
+              await bot.sendArticle(userId, article, summary);
+              console.log(`      ✅ Sent to Telegram User: ${userId}`);
           } catch (err) {
               console.error(`      ❌ Failed to send to ${userId}: ${err.message}`);
           }
@@ -124,33 +115,25 @@ async function processAndSend(source, articleData, recipientEmail) {
   }
 
   // 2. Save to Global History
-  history.addArticle(article, summary);
+  history.addArticle(article, summary, source.id);
 
   return true;
 }
 
 /**
- * Check for new FX Daily articles and send newsletter if found
- * @param {object} options - Watcher options
- * @returns {Promise<boolean>} True if a new article was found and processed
+ * Check for new articles
  */
 async function checkForNewArticle(options = {}) {
-  const {
-    recipientEmail = process.env.RECIPIENT_EMAIL,
-    forceProcess = false,
-  } = options;
+  const { forceProcess = false } = options;
 
   console.log('\n' + '='.repeat(60));
-  console.log('🔍 FX DAILY WATCHER - Checking for new articles...');
+  console.log('🔍 FX WATCHER - Checking for new articles...');
   console.log('='.repeat(60));
   console.log(`   Time: ${new Date().toLocaleString('fr-FR')}`);
 
   try {
-    // Iterate over ALL sources
     const sources = sourceManager.listSources();
     let hasNewContent = false;
-
-    // Load state matching generic structure
     const state = loadState() || {};
 
     for (const srcMeta of sources) {
@@ -159,8 +142,6 @@ async function checkForNewArticle(options = {}) {
             console.log(`\n🔍 Checking source: ${source.name}...`);
             
             const latestArticle = await source.fetchLatest();
-            
-            // Check state for THIS source
             const lastUrl = state[source.id]?.lastArticleUrl;
 
             if (!forceProcess && lastUrl === latestArticle.url) {
@@ -169,11 +150,8 @@ async function checkForNewArticle(options = {}) {
             }
 
             console.log(`   🆕 NEW CONTENT: "${latestArticle.title}"`);
+            await processAndSend(source, latestArticle);
             
-            // Process
-            await processAndSend(source, latestArticle, recipientEmail); // Pass whole article object
-            
-            // Update State
             saveState(source.id, latestArticle.url);
             hasNewContent = true;
 
@@ -184,12 +162,11 @@ async function checkForNewArticle(options = {}) {
 
     if (hasNewContent) {
         console.log('\n' + '='.repeat(60));
-        console.log('✨ Check cycle completed with new content.');
+        console.log('✨ Check cycle completed.');
         console.log('='.repeat(60) + '\n');
     }
     
     return hasNewContent;
-
   } catch (error) {
     console.error(`\n❌ Error checking for new article:`, error.message);
     throw error;
@@ -197,46 +174,55 @@ async function checkForNewArticle(options = {}) {
 }
 
 /**
- * Start continuous watching (polling)
- * @param {object} options - Watcher options
+ * Start continuous watching
  */
 async function startWatcher(options = {}) {
-  const {
-    intervalMinutes = 30,
-    recipientEmail = process.env.RECIPIENT_EMAIL,
-  } = options;
+  const { intervalMinutes = 30 } = options;
 
   console.log('\n' + '═'.repeat(60));
-  console.log('🚀 FX DAILY AUTO-WATCHER STARTED');
+  console.log('🚀 FX AUTO-WATCHER STARTED');
   console.log('═'.repeat(60));
-  console.log(`   📧 Recipient: ${recipientEmail || '⚠️ NOT SET'}`);
-  console.log(`   ⏱️  Check interval: Every ${intervalMinutes} minutes`);
+  console.log(`   ⏱️  Interval: Every ${intervalMinutes} minutes`);
   console.log(`   🤖 AI Summary: ${ (process.env.GEMINI_API_KEY || process.env.GROQ_API_KEY) ? '✅ Enabled' : '❌ Disabled'}`);
   console.log('═'.repeat(60));
   
-  if (!recipientEmail) {
-    console.error('\n❌ RECIPIENT_EMAIL not set in .env file!');
-    process.exit(1);
-  }
-
   // Initial check
-  await checkForNewArticle({ recipientEmail });
+  await checkForNewArticle();
 
-  // Set up interval
   const intervalMs = intervalMinutes * 60 * 1000;
-  
   console.log(`\n⏳ Next check in ${intervalMinutes} minutes...`);
-  console.log('   Press Ctrl+C to stop the watcher.\n');
 
   setInterval(async () => {
     try {
-      await checkForNewArticle({ recipientEmail });
-      console.log(`\n⏳ Next check in ${intervalMinutes} minutes...`);
+      await checkForNewArticle();
     } catch (error) {
       console.error('Error during check:', error.message);
-      console.log(`   Will retry in ${intervalMinutes} minutes...`);
     }
   }, intervalMs);
+
+  // --- MORNING BRIEFING SCHEDULER (08:00 AM) ---
+  const cron = require('node-cron');
+  const { generateBriefing } = require('./briefing');
+  const bot = require('./bot');
+
+  console.log('📅 Morning Briefing scheduled for 08:00 AM');
+  
+  cron.schedule('0 8 * * *', async () => {
+      const users = userManager.users;
+      for (const userId in users) {
+          try {
+              const user = users[userId];
+              const text = await generateBriefing(user.subscriptions);
+              await bot.bot.sendMessage(userId, text, { parse_mode: 'HTML' });
+              console.log(`☕ Personalized Morning Briefing sent to ${user.name} (${userId}).`);
+          } catch (err) {
+              console.error(`❌ Failed to send Personalized Briefing to ${userId}:`, err.message);
+          }
+      }
+  }, {
+      scheduled: true,
+      timezone: process.env.TIMEZONE || "Europe/Paris"
+  });
 }
 
 module.exports = {

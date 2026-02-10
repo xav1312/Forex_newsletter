@@ -39,11 +39,11 @@ class SourceManager {
     );
     this.registerSource(reuters);
 
-    // 5. DailyFX Market News
+    // 5. DailyFX Market News (Google News fallback avoid 403)
     const dailyfx = new RSSAdapter(
       'dailyfx',
       'DailyFX News',
-      'https://www.dailyfx.com/feeds/forex-market-news',
+      'https://news.google.com/rss/search?q=DailyFX&hl=en-GB&gl=GB&ceid=GB:en',
       'general_news'
     );
     this.registerSource(dailyfx);
